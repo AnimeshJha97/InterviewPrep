@@ -1,6 +1,7 @@
 import path from "node:path";
 
 import mammoth from "mammoth";
+import { PdfReader } from "pdfreader";
 
 function normalizeResumeText(text: string) {
   return text
@@ -12,15 +13,25 @@ function normalizeResumeText(text: string) {
 }
 
 async function extractPdfText(fileBuffer: Buffer) {
-  const { PDFParse } = await import("pdf-parse");
-  const parser = new PDFParse({ data: fileBuffer });
+  return new Promise<string>((resolve, reject) => {
+    const lines: string[] = [];
 
-  try {
-    const result = await parser.getText();
-    return normalizeResumeText(result.text);
-  } finally {
-    await parser.destroy();
-  }
+    new PdfReader().parseBuffer(fileBuffer, (error, item) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+
+      if (!item) {
+        resolve(normalizeResumeText(lines.join("\n")));
+        return;
+      }
+
+      if ("text" in item && item.text) {
+        lines.push(item.text);
+      }
+    });
+  });
 }
 
 export async function extractResumeText(fileBuffer: Buffer, fileName: string, mimeType: string) {

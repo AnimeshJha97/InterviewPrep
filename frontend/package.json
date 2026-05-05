@@ -16,6 +16,7 @@
     "next-auth": "^4.24.14",
     "pdf-parse": "^2.4.5",
     "pdfjs-dist": "^5.7.284",
+    "pdfreader": "^3.0.8",
     "react": "latest",
     "react-dom": "latest",
     "zod": "^4.4.3"

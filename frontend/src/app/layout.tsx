@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Animesh Jha Interview Prep",
-  description: "A structured interview preparation guide for senior full stack and technical leadership roles.",
+  title: "PrepWise by Orvion Labs",
+  description: "PrepWise helps candidates turn resumes into personalized interview prep dashboards with AI-generated questions, answers, and progress tracking.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

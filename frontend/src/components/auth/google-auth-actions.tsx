@@ -6,7 +6,12 @@ export function SignInWithGoogleButton() {
   return (
     <button
       type="button"
-      onClick={() => signIn("google", { callbackUrl: "/" })}
+      onClick={() =>
+        signIn("google", {
+          callbackUrl: "/",
+          prompt: "select_account",
+        })
+      }
       style={{
         padding: "12px 18px",
         borderRadius: 12,

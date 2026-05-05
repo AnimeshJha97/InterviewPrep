@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 import { getGeminiClient } from "@/lib/ai/gemini";
-import { generatePrepKitFromResumeFallback } from "@/lib/interview-kit/generate-prep-kit";
 import { getSectionStyle, slugifySectionTitle } from "@/lib/interview-kit/section-style";
 import type { CandidateProfile, GeneratedPrepKitPayload, GeneratedSection, OnboardingProfile } from "@/types/prep-kit";
 
@@ -285,26 +284,24 @@ export async function generatePrepKitFromResume({
   resumeText: string;
   onboarding: OnboardingProfile;
 }): Promise<GeneratedPrepKitPayload> {
-  try {
-    const candidateProfile = await generateCandidateProfileWithGemini({
-      resumeText,
-      onboarding,
-    });
+  const candidateProfile = await generateCandidateProfileWithGemini({
+    resumeText,
+    onboarding,
+  });
 
-    const generatedKit = await generateSectionsAndQuestionsWithGemini({
-      resumeText,
-      onboarding,
-      candidateProfile,
-    });
+  const generatedKit = await generateSectionsAndQuestionsWithGemini({
+    resumeText,
+    onboarding,
+    candidateProfile,
+  });
 
-    return {
-      candidateProfile,
-      sections: normalizeGeneratedSections(generatedKit.sections),
-    };
-  } catch {
-    return generatePrepKitFromResumeFallback({
-      resumeText,
-      onboarding,
-    });
-  }
+  return {
+    candidateProfile,
+    sections: normalizeGeneratedSections(generatedKit.sections),
+    generationMeta: {
+      provider: "gemini",
+      model: "gemini-2.5-flash",
+      generatedFromResume: true,
+    },
+  };
 }

@@ -66,6 +66,11 @@ export interface GeneratedSection extends Omit<PrepGroup, "questions"> {
 export interface GeneratedPrepKitPayload {
   candidateProfile: CandidateProfile;
   sections: GeneratedSection[];
+  generationMeta?: {
+    provider: "gemini";
+    model: string;
+    generatedFromResume: true;
+  };
 }
 
 export interface PrepKitSummary {

@@ -35,7 +35,7 @@ export async function POST(request: Request) {
         onboardingCompleted: true,
       },
     },
-    { new: true },
+    { returnDocument: "after" },
   ).lean();
 
   return NextResponse.json({

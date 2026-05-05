@@ -38,6 +38,7 @@ export async function GET(_request: Request, context: RouteContext) {
       onboarding: prepKit.onboarding ?? {},
       candidateProfile: prepKit.candidateProfile ?? {},
       sections: prepKit.sections ?? [],
+      generationMeta: prepKit.generationMeta ?? {},
       errorMessage: prepKit.errorMessage ?? "",
       createdAt: prepKit.createdAt?.toISOString?.() ?? null,
       updatedAt: prepKit.updatedAt?.toISOString?.() ?? null,

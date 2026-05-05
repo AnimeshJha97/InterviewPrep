@@ -45,6 +45,10 @@ export async function POST(_request: Request, context: RouteContext) {
   try {
     prepKit.status = "analyzing_resume";
     prepKit.errorMessage = "";
+    prepKit.set("generationMeta", {
+      startedAt: new Date().toISOString(),
+      stage: "analyzing_resume",
+    });
     await prepKit.save();
 
     const generated = await generatePrepKitFromResume({
@@ -54,13 +58,29 @@ export async function POST(_request: Request, context: RouteContext) {
 
     prepKit.status = "generating_sections";
     prepKit.set("candidateProfile", generated.candidateProfile);
+    prepKit.set("generationMeta", {
+      ...(generated.generationMeta ?? {}),
+      startedAt: prepKit.get("generationMeta")?.startedAt,
+      stage: "generating_sections",
+    });
     await prepKit.save();
 
     prepKit.status = "generating_questions";
     prepKit.set("sections", generated.sections);
+    prepKit.set("generationMeta", {
+      ...(generated.generationMeta ?? {}),
+      startedAt: prepKit.get("generationMeta")?.startedAt,
+      stage: "generating_questions",
+    });
     await prepKit.save();
 
     prepKit.status = "completed";
+    prepKit.set("generationMeta", {
+      ...(generated.generationMeta ?? {}),
+      startedAt: prepKit.get("generationMeta")?.startedAt,
+      completedAt: new Date().toISOString(),
+      stage: "completed",
+    });
     await prepKit.save();
 
     return NextResponse.json({

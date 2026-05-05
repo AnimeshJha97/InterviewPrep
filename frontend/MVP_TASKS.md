@@ -16,6 +16,9 @@
 - [x] Persist question completion and user notes
 - [x] Add free usage gating
 - [x] Replace heuristic kit generation with real Gemini resume analysis and dynamic question generation
+- [x] Remove silent fallback for production kit generation and store Gemini generation metadata
+- [x] Improve generation status copy/animation for personalized-kit creation flow
+- [x] Fix dashboard sign-out overlap with filter controls
 
 ## Pending
 

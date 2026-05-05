@@ -50,6 +50,7 @@ const PrepKitSchema = new Schema(
     onboarding: { type: Schema.Types.Mixed, default: {} },
     candidateProfile: { type: Schema.Types.Mixed, default: {} },
     sections: [SectionSchema],
+    generationMeta: { type: Schema.Types.Mixed, default: {} },
     errorMessage: { type: String, default: "" },
   },
   { timestamps: true },

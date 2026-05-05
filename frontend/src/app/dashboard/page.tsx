@@ -36,6 +36,9 @@ export default async function DashboardPage() {
     latestPrepKit?.sections && latestPrepKit.sections.length > 0 ? buildDashboardPrepData(latestPrepKit.sections) : undefined;
   const displayRole =
     latestPrepKit?.onboarding?.targetRole || latestPrepKit?.onboarding?.currentRole || "Interview candidate";
+  const extractedSkills = Array.isArray(latestPrepKit?.candidateProfile?.extractedSkills)
+    ? latestPrepKit.candidateProfile.extractedSkills.slice(0, 4)
+    : [];
 
   return (
     <div>
@@ -43,7 +46,7 @@ export default async function DashboardPage() {
         style={{
           position: "fixed",
           right: 16,
-          top: 16,
+          bottom: 16,
           zIndex: 20,
         }}
       >
@@ -54,19 +57,17 @@ export default async function DashboardPage() {
           style={{
             position: "fixed",
             left: 16,
-            right: 16,
-            top: 16,
+            bottom: 16,
             zIndex: 20,
             display: "flex",
-            justifyContent: "center",
+            justifyContent: "flex-start",
             pointerEvents: "none",
           }}
         >
           <div
             style={{
               pointerEvents: "auto",
-              maxWidth: 760,
-              width: "100%",
+              maxWidth: 360,
               borderRadius: 14,
               border: "1px solid rgba(99,102,241,0.22)",
               background: "rgba(19,19,31,0.94)",
@@ -76,9 +77,15 @@ export default async function DashboardPage() {
               lineHeight: 1.7,
             }}
           >
-            <strong style={{ color: "#f8fafc" }}>Resume uploaded.</strong> Prep kit record created for{" "}
-            <span style={{ color: "#a5b4fc" }}>{latestPrepKit.resumeFileName}</span> with status{" "}
-            <span style={{ color: "#f8fafc" }}>{latestPrepKit.status}</span>. Your dashboard is now using generated sections from this kit.
+            <strong style={{ color: "#f8fafc" }}>PrepWise AI generated this kit.</strong>
+            <div style={{ marginTop: 6 }}>
+              Resume: <span style={{ color: "#a5b4fc" }}>{latestPrepKit.resumeFileName}</span>
+            </div>
+            {extractedSkills.length > 0 ? (
+              <div style={{ marginTop: 6 }}>
+                Detected focus: <span style={{ color: "#f8fafc" }}>{extractedSkills.join(", ")}</span>
+              </div>
+            ) : null}
           </div>
         </div>
       ) : null}

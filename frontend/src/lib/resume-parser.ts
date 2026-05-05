@@ -1,9 +1,6 @@
 import path from "node:path";
 
 import mammoth from "mammoth";
-import { getDocument, GlobalWorkerOptions } from "pdfjs-dist/legacy/build/pdf.mjs";
-
-GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.mjs", import.meta.url).toString();
 
 function normalizeResumeText(text: string) {
   return text
@@ -15,28 +12,15 @@ function normalizeResumeText(text: string) {
 }
 
 async function extractPdfText(fileBuffer: Buffer) {
-  const pdf = await getDocument({
-    data: new Uint8Array(fileBuffer),
-    useWorkerFetch: false,
-    useSystemFonts: true,
-  }).promise;
+  const { PDFParse } = await import("pdf-parse");
+  const parser = new PDFParse({ data: fileBuffer });
 
-  const pageTexts: string[] = [];
-
-  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
-    const page = await pdf.getPage(pageNumber);
-    const textContent = await page.getTextContent();
-    const pageText = textContent.items
-      .map((item) => ("str" in item ? item.str : ""))
-      .join(" ")
-      .trim();
-
-    if (pageText) {
-      pageTexts.push(pageText);
-    }
+  try {
+    const result = await parser.getText();
+    return normalizeResumeText(result.text);
+  } finally {
+    await parser.destroy();
   }
-
-  return normalizeResumeText(pageTexts.join("\n\n"));
 }
 
 export async function extractResumeText(fileBuffer: Buffer, fileName: string, mimeType: string) {

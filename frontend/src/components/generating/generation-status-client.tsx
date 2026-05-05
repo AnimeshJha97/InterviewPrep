@@ -7,20 +7,20 @@ import type { PrepKitStatus } from "@/types/prep-kit";
 
 const statusCopy: Record<PrepKitStatus, { title: string; detail: string }> = {
   pending: {
-    title: "Preparing your interview workspace",
-    detail: "We have your resume and profile. The kit will start generating in a moment.",
+    title: "Preparing your personalized interview workspace",
+    detail: "Your profile is locked in. We are about to start building a question set tailored to your resume and target role.",
   },
   analyzing_resume: {
-    title: "Analyzing your resume and target role",
-    detail: "We are mapping your skills, projects, seniority, and likely interview pressure points.",
+    title: "Analyzing your resume, projects, and experience",
+    detail: "Our specialists are mapping your skills, projects, years of experience, and likely interview pressure points.",
   },
   generating_sections: {
-    title: "Designing your section-wise roadmap",
-    detail: "We are prioritizing the topics that matter most for your timeline and target interviews.",
+    title: "Designing your section-wise prep roadmap",
+    detail: "We are prioritizing the topics that matter most for your timeline, target role, and target company context.",
   },
   generating_questions: {
-    title: "Building your personalized question bank",
-    detail: "We are selecting high-signal questions, follow-ups, and answer guidance from your prep corpus.",
+    title: "Creating your personalized interview questions",
+    detail: "We are generating resume-aware questions, follow-ups, and answer guidance based on your actual background.",
   },
   completed: {
     title: "Your prep kit is ready",
@@ -48,6 +48,12 @@ export function GenerationStatusClient({
   const [errorMessage, setErrorMessage] = useState("");
   const [hasStarted, setHasStarted] = useState(initialStatus !== "pending");
   const pollingRef = useRef<number | null>(null);
+  const [messageIndex, setMessageIndex] = useState(0);
+  const rotatingMessages = [
+    "Your personalized questions are being created.",
+    "Our specialists are tailoring the kit to your resume and goals.",
+    "We are aligning difficulty, projects, and likely interview rounds.",
+  ];
 
   const currentCopy = useMemo(() => statusCopy[status], [status]);
 
@@ -130,6 +136,14 @@ export function GenerationStatusClient({
     };
   }, [kitId, router, status]);
 
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setMessageIndex((current) => (current + 1) % rotatingMessages.length);
+    }, 2200);
+
+    return () => window.clearInterval(timer);
+  }, []);
+
   return (
     <div
       style={{
@@ -153,10 +167,41 @@ export function GenerationStatusClient({
         }}
       >
         <div style={{ fontSize: 12, letterSpacing: 2, color: "#818cf8", fontWeight: 700, marginBottom: 10 }}>
-          AI INTERVIEW PREP KIT
+          PREPWISE BY ORVION LABS
         </div>
         <h1 style={{ margin: 0, fontSize: 32, lineHeight: 1.1, color: "#f8fafc" }}>{currentCopy.title}</h1>
         <p style={{ margin: "14px 0 24px", fontSize: 15, lineHeight: 1.7, color: "#94a3b8" }}>{currentCopy.detail}</p>
+
+        <div
+          style={{
+            marginBottom: 20,
+            borderRadius: 16,
+            border: "1px solid rgba(99,102,241,0.22)",
+            background: "linear-gradient(90deg, rgba(99,102,241,0.14), rgba(168,85,247,0.1))",
+            padding: "14px 16px",
+          }}
+        >
+          <div style={{ fontSize: 14, color: "#e2e8f0", lineHeight: 1.7 }}>{rotatingMessages[messageIndex]}</div>
+          <div
+            style={{
+              marginTop: 12,
+              height: 6,
+              borderRadius: 999,
+              overflow: "hidden",
+              background: "rgba(255,255,255,0.08)",
+            }}
+          >
+            <div
+              style={{
+                width: status === "pending" ? "20%" : status === "analyzing_resume" ? "42%" : status === "generating_sections" ? "68%" : status === "generating_questions" ? "88%" : "100%",
+                height: "100%",
+                background: "linear-gradient(90deg, #6366f1, #a855f7)",
+                borderRadius: 999,
+                transition: "width 0.5s ease",
+              }}
+            />
+          </div>
+        </div>
 
         <div
           style={{

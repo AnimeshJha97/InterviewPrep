@@ -7,8 +7,10 @@ import { UserModel } from "@/models/User";
 
 const googleClientId = process.env.AUTH_GOOGLE_ID ?? "google-client-id-placeholder";
 const googleClientSecret = process.env.AUTH_GOOGLE_SECRET ?? "google-client-secret-placeholder";
+const authSecret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
 
 export const authOptions: NextAuthOptions = {
+  secret: authSecret,
   session: {
     strategy: "jwt",
   },

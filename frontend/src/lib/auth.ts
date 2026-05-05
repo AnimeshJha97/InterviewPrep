@@ -48,7 +48,7 @@ export const authOptions: NextAuthOptions = {
         },
         {
           upsert: true,
-          new: true,
+          returnDocument: "after",
         },
       );
 

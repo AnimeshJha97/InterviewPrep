@@ -1,0 +1,31 @@
+export const nextJsGroup = {
+  "id": "nextjs",
+  "title": "Next.js & SSR",
+  "icon": "▲",
+  "color": "#1a1a1a",
+  "textColor": "#ffffff",
+  "estimatedHours": 3,
+  "questions": [
+    {
+      "id": "nj1",
+      "difficulty": "medium",
+      "type": "common",
+      "question": "Explain Next.js rendering strategies — SSR, SSG, ISR, CSR. When to use each?",
+      "answer": "CSR (Client-Side Rendering) — default React behavior:\n>> HTML is an empty shell. JS downloads, runs, fetches data, then renders.\nGood for: authenticated dashboards, highly dynamic content, pages not needing SEO.\n>> // Just use useEffect + fetch — no special config needed\n\nSSG (Static Site Generation) — built at deploy time:\n>> HTML generated once at build time, served from CDN edge. Fastest possible first load.\nGood for: marketing pages, blogs, docs — content that doesn't change per user.\n>> export async function getStaticProps() {\n>>   const posts = await fetchBlogPosts();\n>>   return { props: { posts } };\n>> }\n\nSSR (Server-Side Rendering) — generated per request:\n>> HTML generated on server on each request. Fresh data always. Slower than SSG.\nGood for: SEO-important pages with user-specific or frequently changing data.\n>> export async function getServerSideProps(context) {\n>>   const data = await fetchUserData(context.req.cookies.token);\n>>   return { props: { data } };\n>> }\n\nISR (Incremental Static Regeneration) — best of both worlds:\nStatically generated but revalidates in the background after N seconds.\nGood for: product pages, listing pages — mostly static but need periodic updates.\n>> export async function getStaticProps() {\n>>   const data = await fetchProducts();\n>>   return { props: { data }, revalidate: 60 }; // regenerate every 60 seconds\n>> }\n\n>> APP ROUTER Server Components (Next.js 13+):\nDefault is Server Component — renders on server, zero JS shipped to client.\n>> async function ProductPage({ params }) {\n>>   const product = await db.product.findById(params.id); // direct DB access!\n>>   return <div>{product.name}</div>;\n>> }\n>> // Add 'use client' only when you need state, events, or browser APIs\n\nDECISION GUIDE:\nNo interactivity + SEO + content rarely changes -> SSG\nNo interactivity + SEO + content changes per user -> SSR\nHeavy interactivity + behind auth -> CSR\nMix of static and periodic fresh data -> ISR or Server Components"
+    },
+    {
+      "id": "nj2",
+      "difficulty": "hard",
+      "type": "tricky",
+      "question": "What are Core Web Vitals and how do you optimize a Next.js app for them?",
+      "answer": "CORE WEB VITALS — what Google uses to rank pages:\n- LCP (Largest Contentful Paint): main content load speed. Target: < 2.5s\n- INP (Interaction to Next Paint): responsiveness to input. Target: < 200ms\n- CLS (Cumulative Layout Shift): visual stability, no content jumping. Target: < 0.1\n\nOPTIMIZATION STRATEGIES:\n\n1. IMAGE OPTIMIZATION — biggest LCP win:\nUse the built-in Image component (wraps native img with optimizations).\nAdd the 'priority' prop to your LCP image — tells browser to preload it.\nAutomatically serves WebP, lazy-loads, prevents layout shift.\n\n2. FONTS — prevent CLS:\nUse the built-in font system (next/font). Downloads in background, never causes layout shift.\n>> const inter = Inter({ subsets: ['latin'], display: 'swap' });\n\n3. CODE SPLITTING — reduce initial JS:\n>> const HeavyChart = dynamic(() => import('./HeavyChart'), {\n>>   loading: () => <Skeleton />,\n  ssr: false\n>> });\n\n4. SERVER COMPONENTS — zero JS to client:\n>> // Move data fetching server-side — no useEffect, no loading spinner needed:\n>> async function Dashboard() {\n>>   const data = await db.query(); // runs on server only\n>>   return <DataTable data={data} />;\n>> }\n\n5. REACT CACHE — deduplicate server-side fetches:\n>> // cache() from React 18 deduplicates calls across Server Components:\n>> const getUser = cache(async (id) => db.user.findById(id));\n>> // Multiple components calling getUser(id) = only ONE DB query\n\n6. LINK PREFETCHING:\n>> <Link href=\"/dashboard\" prefetch>Dashboard</Link>\n>> // Prefetches the page JS bundle when link enters the viewport\n\nMEASURING: Lighthouse in DevTools, PageSpeed Insights for production URLs."
+    },
+    {
+      "id": "nj3",
+      "difficulty": "hard",
+      "type": "tricky",
+      "question": "How does Next.js App Router differ from Pages Router? What changed in the mental model?",
+      "answer": "PAGES ROUTER (legacy, still supported):\n- Every file in /pages is a route\n- Data fetching via getStaticProps / getServerSideProps (special exports)\n- All components are client-side by default\n- API routes in /pages/api/\n\n>> APP ROUTER (Next.js 13+, recommended):\n- Files in /app directory. Folder = route segment.\n- layout.tsx wraps child routes — persists across navigation\n- loading.tsx auto-becomes a Suspense boundary\n- error.tsx auto-becomes an Error Boundary\n- Server Components are DEFAULT — zero JS to client\n\nTHE FUNDAMENTAL MENTAL SHIFT:\n\nPages Router: \"Everything is a client component with optional server-side data fetching\"\nApp Router: \"Everything is a server component by default — opt INTO client only when needed\"\n\nWHEN TO ADD 'use client':\n- useState, useEffect, useReducer (state and lifecycle)\n- Browser-only APIs (window, localStorage, navigator)\n- Event handlers (onClick, onChange)\n- Context providers wrapping interactive components\n\n>> SERVER COMPONENT SUPERPOWER — async component:\n>> async function UserProfile({ userId }) {\n>>   const user = await db.users.findById(userId);  // runs on server\n>>   const posts = await db.posts.findByUserId(userId);\n>>   return <div>{user.name} — {posts.length} posts</div>;\n>>   // No fetch(), no loading state, no useEffect needed!\n>> }\n\nLAYOUT NESTING:\napp/\n>>   layout.tsx         <- wraps ALL pages (nav, footer)\n  dashboard/\n>>     layout.tsx       <- wraps all dashboard pages (sidebar)\n>>     page.tsx         <- /dashboard\n    settings/\n>>       page.tsx       <- /dashboard/settings\n\nMIGRATION GOTCHA:\nThird-party providers using React Context need 'use client' wrappers:\n>> 'use client';\n>> export function Providers({ children }) {\n>>   return <ReactQueryProvider>{children}</ReactQueryProvider>;\n>> }"
+    }
+  ]
+};

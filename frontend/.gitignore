@@ -1,0 +1,9 @@
+.next
+public/uploads
+node_modules
+dist
+coverage
+.env.local
+.env*.local
+*.log
+*.tsbuildinfo

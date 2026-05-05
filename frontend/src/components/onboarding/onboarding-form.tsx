@@ -31,6 +31,7 @@ export function OnboardingForm({ initialValues }: OnboardingFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [form, setForm] = useState<OnboardingInput>({
+    fullName: initialValues?.fullName ?? "",
     currentRole: initialValues?.currentRole ?? "",
     targetRole: initialValues?.targetRole ?? "",
     yearsOfExperience: initialValues?.yearsOfExperience ?? 0,
@@ -100,6 +101,16 @@ export function OnboardingForm({ initialValues }: OnboardingFormProps) {
 
   return (
     <form onSubmit={handleSubmit} style={{ display: "grid", gap: 16 }}>
+      <div style={{ display: "grid", gap: 8 }}>
+        <label style={{ fontSize: 13, color: "#cbd5e1" }}>Full name</label>
+        <input
+          value={form.fullName}
+          onChange={(event) => updateField("fullName", event.target.value)}
+          placeholder="e.g. Animesh Jha"
+          style={fieldStyle}
+        />
+      </div>
+
       <div style={{ display: "grid", gap: 8 }}>
         <label style={{ fontSize: 13, color: "#cbd5e1" }}>Current role</label>
         <input

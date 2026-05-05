@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import { SignOutButton } from "@/components/auth/google-auth-actions";
 import { connectToDatabase } from "@/lib/db";
 import { getAuthSession } from "@/lib/auth";
 import { UserModel } from "@/models/User";
@@ -22,6 +23,7 @@ export default async function OnboardingPage() {
 
   const initialValues = user?.onboarding
     ? {
+        fullName: user.onboarding.fullName ?? session.user.name ?? undefined,
         currentRole: user.onboarding.currentRole ?? undefined,
         targetRole: user.onboarding.targetRole ?? undefined,
         yearsOfExperience: user.onboarding.yearsOfExperience ?? undefined,
@@ -42,6 +44,28 @@ export default async function OnboardingPage() {
         padding: "48px 20px",
       }}
     >
+      <div
+        style={{
+          maxWidth: 780,
+          margin: "0 auto 16px",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: 12,
+        }}
+      >
+        <a
+          href="/"
+          style={{
+            color: "#94a3b8",
+            textDecoration: "none",
+            fontSize: 14,
+          }}
+        >
+          ← Back
+        </a>
+        <SignOutButton />
+      </div>
       <div
         style={{
           maxWidth: 780,

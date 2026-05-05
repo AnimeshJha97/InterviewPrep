@@ -2,6 +2,7 @@ import { InferSchemaType, Model, Schema, model, models } from "mongoose";
 
 const OnboardingProfileSchema = new Schema(
   {
+    fullName: { type: String, trim: true },
     currentRole: { type: String, trim: true },
     targetRole: { type: String, trim: true },
     yearsOfExperience: { type: Number, min: 0, max: 40 },

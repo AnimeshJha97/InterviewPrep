@@ -14,6 +14,7 @@ export const confidenceLevelOptions = ["beginner", "intermediate", "advanced"] a
 export const timelineOptions = [7, 14, 30] as const;
 
 export const onboardingSchema = z.object({
+  fullName: z.string().trim().min(2, "Full name is required."),
   currentRole: z.string().trim().min(2, "Current role is required."),
   targetRole: z.string().trim().min(2, "Target role is required."),
   yearsOfExperience: z.coerce.number().min(0).max(40),

@@ -1,6 +1,3 @@
-import { mkdir, writeFile } from "node:fs/promises";
-import path from "node:path";
-
 import { NextResponse } from "next/server";
 
 import { getAuthSession } from "@/lib/auth";
@@ -58,14 +55,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Could not extract text from the uploaded resume." }, { status: 400 });
   }
 
-  const uploadsDir = path.join(process.cwd(), "public", "uploads", "resumes");
-  await mkdir(uploadsDir, { recursive: true });
-
-  const safeBaseName = resume.name.replace(/[^a-zA-Z0-9.\-_]/g, "-");
-  const storedFileName = `${Date.now()}-${safeBaseName}`;
-  const storedFilePath = path.join(uploadsDir, storedFileName);
-  await writeFile(storedFilePath, fileBuffer);
-
   await connectToDatabase();
 
   const user = await UserModel.findById(session.user.id).select("onboarding plan").lean();
@@ -89,11 +78,16 @@ export async function POST(request: Request) {
     userId: session.user.id,
     status: "pending",
     resumeFileName: resume.name,
-    resumeUrl: `/uploads/resumes/${storedFileName}`,
+    resumeUrl: "",
     resumeText,
     onboarding: user?.onboarding ?? {},
     candidateProfile: {},
     sections: [],
+    generationMeta: {
+      uploadedAt: new Date().toISOString(),
+      fileSize: resume.size,
+      mimeType: resume.type,
+    },
   });
 
   await UserModel.findByIdAndUpdate(session.user.id, {

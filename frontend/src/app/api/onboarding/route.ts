@@ -31,6 +31,7 @@ export async function POST(request: Request) {
     session.user.id,
     {
       $set: {
+        name: parsed.data.fullName,
         onboarding: parsed.data,
         onboardingCompleted: true,
       },

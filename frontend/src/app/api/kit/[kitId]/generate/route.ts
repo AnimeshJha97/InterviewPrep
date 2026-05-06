@@ -45,6 +45,15 @@ export async function POST(_request: Request, context: RouteContext) {
     return NextResponse.json({ error: "Resume text is missing for this prep kit." }, { status: 400 });
   }
 
+  if (prepKit.status === "analyzing_resume" || prepKit.status === "generating_sections" || prepKit.status === "generating_questions") {
+    return NextResponse.json({
+      success: true,
+      status: prepKit.status,
+      prepKitId: String(prepKit._id),
+      alreadyRunning: true,
+    });
+  }
+
   try {
     prepKit.status = "analyzing_resume";
     prepKit.errorMessage = "";

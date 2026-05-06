@@ -48,6 +48,9 @@ export function GenerationStatusClient({
   const [errorMessage, setErrorMessage] = useState("");
   const [hasStarted, setHasStarted] = useState(initialStatus !== "pending");
   const pollingRef = useRef<number | null>(null);
+  const requestStartedRef = useRef(false);
+  const pollCountRef = useRef(0);
+  const redirectTimeoutRef = useRef<number | null>(null);
   const [messageIndex, setMessageIndex] = useState(0);
   const rotatingMessages = [
     "Your personalized questions are being created.",
@@ -61,6 +64,7 @@ export function GenerationStatusClient({
     let isCancelled = false;
 
     const triggerGeneration = async () => {
+      requestStartedRef.current = true;
       try {
         const response = await fetch(`/api/kit/${kitId}/generate`, {
           method: "POST",
@@ -82,7 +86,7 @@ export function GenerationStatusClient({
       }
     };
 
-    if (!hasStarted && status !== "completed") {
+    if (!hasStarted && status !== "completed" && !requestStartedRef.current) {
       void triggerGeneration();
     }
 
@@ -93,6 +97,18 @@ export function GenerationStatusClient({
 
   useEffect(() => {
     const poll = async () => {
+      pollCountRef.current += 1;
+
+      if (pollCountRef.current > 60) {
+        setStatus("failed");
+        setErrorMessage("Generation timed out. Please return and try again.");
+        if (pollingRef.current) {
+          window.clearInterval(pollingRef.current);
+          pollingRef.current = null;
+        }
+        return;
+      }
+
       const response = await fetch(`/api/kit/${kitId}`, { cache: "no-store" });
 
       if (!response.ok) {
@@ -116,7 +132,14 @@ export function GenerationStatusClient({
           window.clearInterval(pollingRef.current);
           pollingRef.current = null;
         }
-        window.setTimeout(() => router.replace("/dashboard"), 900);
+        redirectTimeoutRef.current = window.setTimeout(() => router.replace("/dashboard"), 900);
+      }
+
+      if (payload.kit.status === "failed") {
+        if (pollingRef.current) {
+          window.clearInterval(pollingRef.current);
+          pollingRef.current = null;
+        }
       }
     };
 
@@ -132,6 +155,10 @@ export function GenerationStatusClient({
       if (pollingRef.current) {
         window.clearInterval(pollingRef.current);
         pollingRef.current = null;
+      }
+      if (redirectTimeoutRef.current) {
+        window.clearTimeout(redirectTimeoutRef.current);
+        redirectTimeoutRef.current = null;
       }
     };
   }, [kitId, router, status]);
@@ -283,6 +310,41 @@ export function GenerationStatusClient({
             {errorMessage || "The prep kit could not be generated."}
           </div>
         ) : null}
+
+        <div style={{ marginTop: 18, display: "flex", gap: 10 }}>
+          <a
+            href="/onboarding"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "10px 14px",
+              borderRadius: 10,
+              border: "1px solid rgba(255,255,255,0.1)",
+              color: "#cbd5e1",
+              textDecoration: "none",
+              fontSize: 13,
+            }}
+          >
+            Back to form
+          </a>
+          <a
+            href="/"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "10px 14px",
+              borderRadius: 10,
+              border: "1px solid rgba(255,255,255,0.1)",
+              color: "#94a3b8",
+              textDecoration: "none",
+              fontSize: 13,
+            }}
+          >
+            Exit
+          </a>
+        </div>
       </div>
     </div>
   );

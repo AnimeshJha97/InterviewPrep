@@ -8,12 +8,12 @@ import type { CandidateProfile, GeneratedPrepKitPayload, GeneratedSection, Onboa
 const candidateProfileSchema = z.object({
   candidateLevel: z.enum(["junior", "mid", "senior"]),
   targetRole: z.string().min(2),
-  strongAreas: z.array(z.string()).min(1).max(8),
-  weakAreas: z.array(z.string()).max(8),
-  likelyInterviewRounds: z.array(z.string()).min(2).max(8),
-  priorityTopics: z.array(z.string()).min(3).max(12),
-  extractedSkills: z.array(z.string()).min(3).max(25),
-  extractedProjects: z.array(z.string()).min(1).max(12),
+  strongAreas: z.array(z.string()).min(1).max(16),
+  weakAreas: z.array(z.string()).max(16),
+  likelyInterviewRounds: z.array(z.string()).min(1).max(12),
+  priorityTopics: z.array(z.string()).min(1).max(16),
+  extractedSkills: z.array(z.string()).min(1).max(32),
+  extractedProjects: z.array(z.string()).min(1).max(16),
   experienceSummary: z.string().min(20).max(1500),
   yearsOfExperience: z.number().min(0).max(40),
 });
@@ -38,12 +38,12 @@ const generatedSectionSchema = z.object({
   description: z.string().min(20).max(800),
   estimatedHours: z.number().min(1).max(20),
   priorityScore: z.number().int().min(1).max(100),
-  questions: z.array(generatedQuestionSchema).min(3).max(10),
+  questions: z.array(generatedQuestionSchema).min(1).max(10),
 });
 
 const generatedKitSchema = z.object({
   candidateProfile: candidateProfileSchema,
-  sections: z.array(generatedSectionSchema).min(5).max(12),
+  sections: z.array(generatedSectionSchema).min(1).max(12),
 });
 
 function buildGeneratedKitJsonSchema() {
@@ -131,6 +131,20 @@ function buildGeneratedKitJsonSchema() {
 
 function trimResumeText(resumeText: string) {
   return resumeText.slice(0, 18000);
+}
+
+function uniqueTrimmed(items: string[], max: number, fallback: string[] = []) {
+  const normalized = items
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .filter((item, index, array) => array.indexOf(item) === index)
+    .slice(0, max);
+
+  if (normalized.length > 0) {
+    return normalized;
+  }
+
+  return fallback.slice(0, max);
 }
 
 async function generateKitWithGemini({
@@ -236,6 +250,30 @@ function normalizeGeneratedSections(
   });
 }
 
+function normalizeCandidateProfile(
+  candidateProfile: z.infer<typeof candidateProfileSchema>,
+  onboarding: OnboardingProfile,
+): CandidateProfile {
+  const targetRole =
+    candidateProfile.targetRole.trim() ||
+    onboarding.targetRole?.trim() ||
+    onboarding.currentRole?.trim() ||
+    "Interview candidate";
+
+  return {
+    candidateLevel: candidateProfile.candidateLevel,
+    targetRole,
+    strongAreas: uniqueTrimmed(candidateProfile.strongAreas, 8, ["Core strengths still being mapped"]),
+    weakAreas: uniqueTrimmed(candidateProfile.weakAreas, 8),
+    likelyInterviewRounds: uniqueTrimmed(candidateProfile.likelyInterviewRounds, 8, ["Technical screening"]),
+    priorityTopics: uniqueTrimmed(candidateProfile.priorityTopics, 12, ["Role fundamentals"]),
+    extractedSkills: uniqueTrimmed(candidateProfile.extractedSkills, 25, ["resume review"]),
+    extractedProjects: uniqueTrimmed(candidateProfile.extractedProjects, 12, ["Primary resume project"]),
+    experienceSummary: candidateProfile.experienceSummary.trim(),
+    yearsOfExperience: candidateProfile.yearsOfExperience,
+  };
+}
+
 export async function generatePrepKitFromResume({
   resumeText,
   onboarding,
@@ -251,9 +289,10 @@ export async function generatePrepKitFromResume({
     plan,
   });
   const normalizedSections = normalizeGeneratedSections(generatedKit.sections, plan);
+  const normalizedCandidateProfile = normalizeCandidateProfile(generatedKit.candidateProfile, onboarding);
 
   return {
-    candidateProfile: generatedKit.candidateProfile,
+    candidateProfile: normalizedCandidateProfile,
     sections: normalizedSections,
     generationMeta: {
       provider: "gemini",

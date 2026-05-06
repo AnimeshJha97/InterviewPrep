@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { SignOutButton } from "@/components/auth/google-auth-actions";
 import { InterviewPrepScreen } from "@/components/interview-prep/screen";
 import { getAuthSession } from "@/lib/auth";
+import { getQuestionVisibilityLimit } from "@/lib/config/plan-limits";
 import { connectToDatabase } from "@/lib/db";
 import { buildDashboardPrepData } from "@/lib/interview-kit/to-dashboard-data";
 import { PrepKitModel } from "@/models/PrepKit";
@@ -43,6 +44,36 @@ export default async function DashboardPage() {
   const extractedSkills = Array.isArray(latestPrepKit?.candidateProfile?.extractedSkills)
     ? latestPrepKit.candidateProfile.extractedSkills.slice(0, 4)
     : [];
+  const emptyState = !latestPrepKit
+    ? {
+        title: "No prep kit yet",
+        description: "Upload your resume and save your profile to let PrepWise analyze your background and create questions.",
+        ctaLabel: "Upload resume",
+        ctaHref: "/onboarding?edit=1",
+      }
+    : latestPrepKit.status === "failed"
+      ? {
+          title: "Generation failed",
+          description:
+            latestPrepKit.resumeFileName
+              ? `We could not build a personalized kit from ${latestPrepKit.resumeFileName}. Go back to your profile, upload the resume again, and retry generation.`
+              : "We could not build a personalized kit. Go back to your profile and upload the resume again.",
+          ctaLabel: "Back to profile",
+          ctaHref: "/onboarding?edit=1",
+        }
+      : latestPrepKit.status === "cancelled"
+        ? {
+            title: "Generation stopped",
+            description: "Your last prep generation was stopped before questions were created. Return to your profile to upload a resume and start again.",
+            ctaLabel: "Restart setup",
+            ctaHref: "/onboarding?edit=1",
+          }
+        : {
+            title: "No AI-generated questions yet",
+            description: "This account does not have a completed personalized interview kit yet. Upload a resume and run generation first.",
+            ctaLabel: "Go to profile",
+            ctaHref: "/onboarding?edit=1",
+          };
 
   return (
     <div>
@@ -98,7 +129,8 @@ export default async function DashboardPage() {
         profileName={session.user.name ?? "Interview Prep"}
         profileRole={displayRole}
         kitId={user?.latestPrepKitId ? String(user.latestPrepKitId) : undefined}
-        questionLimit={session.user.plan === "free" ? 10 : undefined}
+        questionLimit={getQuestionVisibilityLimit(session.user.plan)}
+        emptyState={emptyState}
       />
     </div>
   );

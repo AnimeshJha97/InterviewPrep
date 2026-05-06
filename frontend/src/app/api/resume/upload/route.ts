@@ -62,6 +62,9 @@ export async function POST(request: Request) {
   if (user?.plan === "free") {
     const existingKitCount = await PrepKitModel.countDocuments({
       userId: session.user.id,
+      status: {
+        $nin: ["failed", "cancelled"],
+      },
     });
 
     if (existingKitCount >= 1) {

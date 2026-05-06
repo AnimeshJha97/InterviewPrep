@@ -20,6 +20,9 @@
 - [x] Improve generation status copy/animation for personalized-kit creation flow
 - [x] Fix dashboard sign-out overlap with filter controls
 - [x] Add generation cancel flow and stop runaway polling/redirect loops
+- [x] Remove static interview-kit fallback and add empty/retry states for failed or missing AI kits
+- [x] Relax and normalize Gemini schema handling for free-tier personalized generation
+- [x] Make free/paid question limits and free-tier retarget limit configurable through environment variables
 
 ## Pending
 

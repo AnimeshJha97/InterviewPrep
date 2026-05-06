@@ -2,13 +2,18 @@
 
 import { useMemo, useState } from "react";
 
-import { prepData } from "@/data/interview-prep";
-
 import { QuestionList } from "./question-list";
 import { repairText } from "./repair-text";
 import { Sidebar } from "./sidebar";
 import { Topbar } from "./topbar";
 import type { PrepDataset } from "./types";
+
+interface EmptyStateConfig {
+  title: string;
+  description: string;
+  ctaLabel: string;
+  ctaHref: string;
+}
 
 interface InterviewPrepScreenProps {
   data?: PrepDataset;
@@ -16,30 +21,33 @@ interface InterviewPrepScreenProps {
   profileRole?: string;
   kitId?: string;
   questionLimit?: number;
+  emptyState?: EmptyStateConfig;
 }
 
 export function InterviewPrepScreen({
-  data = prepData as unknown as PrepDataset,
+  data,
   profileName = "Animesh Jha",
   profileRole = "Senior Full Stack Developer",
   kitId,
   questionLimit,
+  emptyState,
 }: InterviewPrepScreenProps) {
+  const safeData = useMemo<PrepDataset>(() => data ?? { groups: [] }, [data]);
   const initialCompleted = useMemo(
     () =>
       Object.fromEntries(
-        data.groups.flatMap((group) =>
+        safeData.groups.flatMap((group) =>
           group.questions.filter((question) => question.isCompleted).map((question) => [question.id, true]),
         ),
       ),
-    [data],
+    [safeData],
   );
   const initialNotes = useMemo(
     () =>
       Object.fromEntries(
-        data.groups.flatMap((group) => group.questions.map((question) => [question.id, question.userNotes ?? ""])),
+        safeData.groups.flatMap((group) => group.questions.map((question) => [question.id, question.userNotes ?? ""])),
       ),
-    [data],
+    [safeData],
   );
   const [activeGroup, setActiveGroup] = useState("javascript");
   const [expandedQ, setExpandedQ] = useState<string | null>(null);
@@ -48,21 +56,22 @@ export function InterviewPrepScreen({
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
 
-  const groups = data.groups;
+  const groups = safeData.groups;
   const visibleQuestionIds = useMemo(() => {
     if (!questionLimit) {
       return null;
     }
 
     return new Set(
-      data.groups
+      safeData.groups
         .flatMap((group) => group.questions.map((question) => question.id))
         .slice(0, questionLimit),
     );
-  }, [data, questionLimit]);
+  }, [questionLimit, safeData]);
   const defaultGroupId = groups[0]?.id ?? "javascript";
   const normalizedActiveGroup = groups.some((item) => item.id === activeGroup) ? activeGroup : defaultGroupId;
   const group = groups.find((item) => item.id === normalizedActiveGroup);
+  const hasRealData = groups.length > 0;
 
   const filtered =
     group?.questions
@@ -137,6 +146,88 @@ export function InterviewPrepScreen({
   const totalQ = groups.reduce((sum, item) => sum + item.questions.length, 0);
   const totalDone = Object.keys(completed).length;
   const progress = totalQ > 0 ? Math.round((totalDone / totalQ) * 100) : 0;
+
+  if (!hasRealData) {
+    const resolvedEmptyState = emptyState ?? {
+      title: "No interview kit yet",
+      description: "Upload a resume and save your profile to generate a personalized prep kit.",
+      ctaLabel: "Go to profile",
+      ctaHref: "/onboarding?edit=1",
+    };
+
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          background: "#0f0f1a",
+          color: "#e2e8f0",
+          fontFamily: "Inter, system-ui, sans-serif",
+          display: "grid",
+          placeItems: "center",
+          padding: 24,
+        }}
+      >
+        <div
+          style={{
+            width: "100%",
+            maxWidth: 720,
+            borderRadius: 24,
+            border: "1px solid rgba(255,255,255,0.08)",
+            background: "rgba(19,19,31,0.92)",
+            padding: 32,
+            boxShadow: "0 24px 80px rgba(2,6,23,0.42)",
+          }}
+        >
+          <div style={{ fontSize: 12, letterSpacing: 2, color: "#818cf8", fontWeight: 700, marginBottom: 10 }}>
+            PREPWISE
+          </div>
+          <h1 style={{ margin: 0, fontSize: 32, lineHeight: 1.15, color: "#f8fafc" }}>{resolvedEmptyState.title}</h1>
+          <p style={{ margin: "14px 0 0", fontSize: 15, lineHeight: 1.8, color: "#94a3b8" }}>
+            {resolvedEmptyState.description}
+          </p>
+          <div style={{ marginTop: 24, display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <a
+              href={resolvedEmptyState.ctaHref}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "13px 18px",
+                borderRadius: 12,
+                border: "1px solid rgba(99,102,241,0.24)",
+                background: "linear-gradient(135deg, #4f46e5, #7c3aed)",
+                color: "#fff",
+                fontSize: 14,
+                fontWeight: 700,
+                textDecoration: "none",
+              }}
+            >
+              {resolvedEmptyState.ctaLabel}
+            </a>
+            <a
+              href="/"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "13px 18px",
+                borderRadius: 12,
+                border: "1px solid rgba(255,255,255,0.1)",
+                background: "transparent",
+                color: "#cbd5e1",
+                fontSize: 14,
+                fontWeight: 600,
+                textDecoration: "none",
+              }}
+            >
+              Back home
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       style={{

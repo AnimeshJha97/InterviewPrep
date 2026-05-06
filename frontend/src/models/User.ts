@@ -27,6 +27,7 @@ const UserSchema = new Schema(
     plan: { type: String, enum: ["free", "paid"], default: "free" },
     onboardingCompleted: { type: Boolean, default: false },
     onboarding: { type: OnboardingProfileSchema, default: null },
+    profileRetargetCount: { type: Number, default: 0, min: 0 },
     latestPrepKitId: { type: Schema.Types.ObjectId, ref: "PrepKit", default: null },
   },
   { timestamps: true },

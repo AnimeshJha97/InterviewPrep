@@ -30,6 +30,10 @@ const statusCopy: Record<PrepKitStatus, { title: string; detail: string }> = {
     title: "Generation hit a problem",
     detail: "You can retry the generation without re-uploading the resume.",
   },
+  cancelled: {
+    title: "Generation stopped",
+    detail: "The current prep creation flow was stopped. You can return to the form and start again when ready.",
+  },
 };
 
 interface GenerationStatusClientProps {
@@ -47,6 +51,7 @@ export function GenerationStatusClient({
   const [status, setStatus] = useState<PrepKitStatus>(initialStatus);
   const [errorMessage, setErrorMessage] = useState("");
   const [hasStarted, setHasStarted] = useState(initialStatus !== "pending");
+  const [isStopping, setIsStopping] = useState(false);
   const pollingRef = useRef<number | null>(null);
   const requestStartedRef = useRef(false);
   const pollCountRef = useRef(0);
@@ -135,7 +140,7 @@ export function GenerationStatusClient({
         redirectTimeoutRef.current = window.setTimeout(() => router.replace("/dashboard"), 900);
       }
 
-      if (payload.kit.status === "failed") {
+      if (payload.kit.status === "failed" || payload.kit.status === "cancelled") {
         if (pollingRef.current) {
           window.clearInterval(pollingRef.current);
           pollingRef.current = null;
@@ -170,6 +175,28 @@ export function GenerationStatusClient({
 
     return () => window.clearInterval(timer);
   }, []);
+
+  const stopGeneration = async (destination: "form" | "home") => {
+    setIsStopping(true);
+
+    try {
+      await fetch(`/api/kit/${kitId}/cancel`, {
+        method: "POST",
+      });
+    } finally {
+      if (pollingRef.current) {
+        window.clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
+
+      if (redirectTimeoutRef.current) {
+        window.clearTimeout(redirectTimeoutRef.current);
+        redirectTimeoutRef.current = null;
+      }
+
+      router.replace(destination === "form" ? "/onboarding?edit=1" : "/?stay=1");
+    }
+  };
 
   return (
     <div
@@ -312,8 +339,10 @@ export function GenerationStatusClient({
         ) : null}
 
         <div style={{ marginTop: 18, display: "flex", gap: 10 }}>
-          <a
-            href="/onboarding"
+          <button
+            type="button"
+            onClick={() => void stopGeneration("form")}
+            disabled={isStopping}
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -321,15 +350,18 @@ export function GenerationStatusClient({
               padding: "10px 14px",
               borderRadius: 10,
               border: "1px solid rgba(255,255,255,0.1)",
+              background: "transparent",
               color: "#cbd5e1",
-              textDecoration: "none",
               fontSize: 13,
+              cursor: isStopping ? "wait" : "pointer",
             }}
           >
             Back to form
-          </a>
-          <a
-            href="/"
+          </button>
+          <button
+            type="button"
+            onClick={() => void stopGeneration("home")}
+            disabled={isStopping}
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -337,13 +369,14 @@ export function GenerationStatusClient({
               padding: "10px 14px",
               borderRadius: 10,
               border: "1px solid rgba(255,255,255,0.1)",
+              background: "transparent",
               color: "#94a3b8",
-              textDecoration: "none",
               fontSize: 13,
+              cursor: isStopping ? "wait" : "pointer",
             }}
           >
             Exit
-          </a>
+          </button>
         </div>
       </div>
     </div>

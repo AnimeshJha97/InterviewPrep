@@ -41,7 +41,7 @@ const PrepKitSchema = new Schema(
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
     status: {
       type: String,
-      enum: ["pending", "analyzing_resume", "generating_sections", "generating_questions", "completed", "failed"],
+      enum: ["pending", "analyzing_resume", "generating_sections", "generating_questions", "completed", "failed", "cancelled"],
       default: "pending",
     },
     resumeFileName: { type: String, default: "" },

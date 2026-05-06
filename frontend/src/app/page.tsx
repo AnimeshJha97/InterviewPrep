@@ -3,10 +3,18 @@ import { redirect } from "next/navigation";
 import { SignInWithGoogleButton, SignOutButton } from "@/components/auth/google-auth-actions";
 import { getAuthSession } from "@/lib/auth";
 
-export default async function HomePage() {
+interface HomePageProps {
+  searchParams?: Promise<{
+    stay?: string;
+  }>;
+}
+
+export default async function HomePage({ searchParams }: HomePageProps) {
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const allowStay = resolvedSearchParams?.stay === "1";
   const session = await getAuthSession();
 
-  if (session?.user?.onboardingCompleted) {
+  if (session?.user?.onboardingCompleted && !allowStay) {
     redirect("/dashboard");
   }
 
@@ -108,7 +116,7 @@ export default async function HomePage() {
           <div style={{ marginTop: 24 }}>
             {session?.user ? (
               <a
-                href="/onboarding"
+                href="/onboarding?edit=1"
                 style={{
                   display: "inline-flex",
                   alignItems: "center",

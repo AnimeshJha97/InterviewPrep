@@ -28,7 +28,11 @@ export default async function DashboardPage() {
         .lean()
     : null;
 
-  if (user?.latestPrepKitId && latestPrepKit && latestPrepKit.status !== "completed") {
+  if (
+    user?.latestPrepKitId &&
+    latestPrepKit &&
+    ["pending", "analyzing_resume", "generating_sections", "generating_questions"].includes(latestPrepKit.status)
+  ) {
     redirect(`/generating/${String(user.latestPrepKitId)}`);
   }
 

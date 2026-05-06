@@ -6,7 +6,15 @@ import { getAuthSession } from "@/lib/auth";
 import { UserModel } from "@/models/User";
 import { OnboardingForm } from "@/components/onboarding/onboarding-form";
 
-export default async function OnboardingPage() {
+interface OnboardingPageProps {
+  searchParams?: Promise<{
+    edit?: string;
+  }>;
+}
+
+export default async function OnboardingPage({ searchParams }: OnboardingPageProps) {
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const allowEdit = resolvedSearchParams?.edit === "1";
   const session = await getAuthSession();
 
   if (!session?.user?.id) {
@@ -17,7 +25,7 @@ export default async function OnboardingPage() {
 
   const user = await UserModel.findById(session.user.id).select("onboarding onboardingCompleted").lean();
 
-  if (user?.onboardingCompleted) {
+  if (user?.onboardingCompleted && !allowEdit) {
     redirect("/dashboard");
   }
 
@@ -55,7 +63,7 @@ export default async function OnboardingPage() {
         }}
       >
         <a
-          href="/"
+          href={allowEdit ? "/dashboard" : "/"}
           style={{
             color: "#94a3b8",
             textDecoration: "none",

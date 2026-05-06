@@ -16,7 +16,8 @@ export type PrepKitStatus =
   | "generating_sections"
   | "generating_questions"
   | "completed"
-  | "failed";
+  | "failed"
+  | "cancelled";
 
 export interface OnboardingProfile {
   fullName?: string;

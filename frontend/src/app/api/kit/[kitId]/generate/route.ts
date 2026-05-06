@@ -45,6 +45,10 @@ export async function POST(_request: Request, context: RouteContext) {
     return NextResponse.json({ error: "Resume text is missing for this prep kit." }, { status: 400 });
   }
 
+  if (prepKit.status === "cancelled") {
+    return NextResponse.json({ error: "Prep kit generation was cancelled." }, { status: 409 });
+  }
+
   if (prepKit.status === "analyzing_resume" || prepKit.status === "generating_sections" || prepKit.status === "generating_questions") {
     return NextResponse.json({
       success: true,
@@ -68,6 +72,11 @@ export async function POST(_request: Request, context: RouteContext) {
       onboarding: prepKit.onboarding ?? {},
       plan: user?.plan ?? "free",
     });
+
+    const refreshedPrepKit = await PrepKitModel.findById(prepKit._id).select("status").lean();
+    if (refreshedPrepKit?.status === "cancelled") {
+      return NextResponse.json({ success: false, status: "cancelled" }, { status: 409 });
+    }
 
     prepKit.status = "generating_sections";
     prepKit.set("candidateProfile", generated.candidateProfile);

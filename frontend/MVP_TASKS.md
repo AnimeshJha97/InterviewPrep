@@ -19,6 +19,7 @@
 - [x] Remove silent fallback for production kit generation and store Gemini generation metadata
 - [x] Improve generation status copy/animation for personalized-kit creation flow
 - [x] Fix dashboard sign-out overlap with filter controls
+- [x] Add generation cancel flow and stop runaway polling/redirect loops
 
 ## Pending
 

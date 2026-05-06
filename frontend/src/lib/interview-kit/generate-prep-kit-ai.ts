@@ -1,8 +1,9 @@
 import { z } from "zod";
 
 import { getGeminiClient } from "@/lib/ai/gemini";
+import { getGenerationLimits } from "@/lib/interview-kit/generation-limits";
 import { getSectionStyle, slugifySectionTitle } from "@/lib/interview-kit/section-style";
-import type { CandidateProfile, GeneratedPrepKitPayload, GeneratedSection, OnboardingProfile } from "@/types/prep-kit";
+import type { CandidateProfile, GeneratedPrepKitPayload, GeneratedSection, OnboardingProfile, UserPlan } from "@/types/prep-kit";
 
 const candidateProfileSchema = z.object({
   candidateLevel: z.enum(["junior", "mid", "senior"]),
@@ -36,48 +37,46 @@ const generatedSectionSchema = z.object({
   title: z.string().min(2),
   description: z.string().min(20).max(800),
   estimatedHours: z.number().min(1).max(20),
-  priorityScore: z.number().int().min(1).max(10),
+  priorityScore: z.number().int().min(1).max(100),
   questions: z.array(generatedQuestionSchema).min(3).max(10),
 });
 
 const generatedKitSchema = z.object({
+  candidateProfile: candidateProfileSchema,
   sections: z.array(generatedSectionSchema).min(5).max(12),
 });
-
-function buildCandidateProfileJsonSchema() {
-  return {
-    type: "object",
-    properties: {
-      candidateLevel: { type: "string", enum: ["junior", "mid", "senior"] },
-      targetRole: { type: "string" },
-      strongAreas: { type: "array", items: { type: "string" } },
-      weakAreas: { type: "array", items: { type: "string" } },
-      likelyInterviewRounds: { type: "array", items: { type: "string" } },
-      priorityTopics: { type: "array", items: { type: "string" } },
-      extractedSkills: { type: "array", items: { type: "string" } },
-      extractedProjects: { type: "array", items: { type: "string" } },
-      experienceSummary: { type: "string" },
-      yearsOfExperience: { type: "number" },
-    },
-    required: [
-      "candidateLevel",
-      "targetRole",
-      "strongAreas",
-      "weakAreas",
-      "likelyInterviewRounds",
-      "priorityTopics",
-      "extractedSkills",
-      "extractedProjects",
-      "experienceSummary",
-      "yearsOfExperience",
-    ],
-  };
-}
 
 function buildGeneratedKitJsonSchema() {
   return {
     type: "object",
     properties: {
+      candidateProfile: {
+        type: "object",
+        properties: {
+          candidateLevel: { type: "string", enum: ["junior", "mid", "senior"] },
+          targetRole: { type: "string" },
+          strongAreas: { type: "array", items: { type: "string" } },
+          weakAreas: { type: "array", items: { type: "string" } },
+          likelyInterviewRounds: { type: "array", items: { type: "string" } },
+          priorityTopics: { type: "array", items: { type: "string" } },
+          extractedSkills: { type: "array", items: { type: "string" } },
+          extractedProjects: { type: "array", items: { type: "string" } },
+          experienceSummary: { type: "string" },
+          yearsOfExperience: { type: "number" },
+        },
+        required: [
+          "candidateLevel",
+          "targetRole",
+          "strongAreas",
+          "weakAreas",
+          "likelyInterviewRounds",
+          "priorityTopics",
+          "extractedSkills",
+          "extractedProjects",
+          "experienceSummary",
+          "yearsOfExperience",
+        ],
+      },
       sections: {
         type: "array",
         items: {
@@ -126,7 +125,7 @@ function buildGeneratedKitJsonSchema() {
         },
       },
     },
-    required: ["sections"],
+    required: ["candidateProfile", "sections"],
   };
 }
 
@@ -134,75 +133,25 @@ function trimResumeText(resumeText: string) {
   return resumeText.slice(0, 18000);
 }
 
-function getPlanNumbers(onboarding: OnboardingProfile) {
-  const sectionCount = onboarding.timelineDays === 30 ? 10 : onboarding.timelineDays === 7 ? 6 : 8;
-  const questionsPerSection = onboarding.timelineDays === 30 ? 6 : onboarding.timelineDays === 7 ? 4 : 5;
-
-  return { sectionCount, questionsPerSection };
-}
-
-async function generateCandidateProfileWithGemini({
+async function generateKitWithGemini({
   resumeText,
   onboarding,
+  plan,
 }: {
   resumeText: string;
   onboarding: OnboardingProfile;
+  plan: UserPlan;
 }) {
   const client = getGeminiClient();
+  const limits = getGenerationLimits(plan);
   const prompt = `
 You are an expert interview prep strategist.
 
-Analyze this candidate deeply using:
-- resume text
-- current role
-- target role
-- years of experience
-- target company
-- job description
-- confidence level
-- interview type
-- timeline
-
-Return only valid JSON.
-
-ONBOARDING:
-${JSON.stringify(onboarding, null, 2)}
-
-RESUME:
-${trimResumeText(resumeText)}
-`.trim();
-
-  const response = await client.models.generateContent({
-    model: "gemini-2.5-flash",
-    contents: prompt,
-    config: {
-      temperature: 0.3,
-      responseMimeType: "application/json",
-      responseJsonSchema: buildCandidateProfileJsonSchema(),
-    },
-  });
-
-  return candidateProfileSchema.parse(JSON.parse(response.text ?? "{}"));
-}
-
-async function generateSectionsAndQuestionsWithGemini({
-  resumeText,
-  onboarding,
-  candidateProfile,
-}: {
-  resumeText: string;
-  onboarding: OnboardingProfile;
-  candidateProfile: CandidateProfile;
-}) {
-  const client = getGeminiClient();
-  const { sectionCount, questionsPerSection } = getPlanNumbers(onboarding);
-
-  const prompt = `
-You build personalized interview prep kits.
-
 Goal:
-- create exactly ${sectionCount} sections
-- create exactly ${questionsPerSection} questions per section
+- analyze the candidate and create one complete personalized prep kit
+- create exactly ${limits.sectionCount} sections
+- create exactly ${limits.totalQuestions} total questions across all sections
+- no section may exceed ${limits.maxQuestionsPerSection} questions
 - questions must be specific to this user's resume, projects, seniority, tools, and likely interview loops
 - questions must not feel generic
 - use project-based cross-questions when useful
@@ -216,14 +165,15 @@ Rules:
 - resumeConnection must clearly tie to something from the user's actual background
 - tags should be useful, short, and lowercase
 - commonMistakes should be concrete
+- keep the output small and efficient because this runs on a limited test-tier quota
 
 Return only valid JSON.
 
+PLAN:
+${plan}
+
 ONBOARDING:
 ${JSON.stringify(onboarding, null, 2)}
-
-CANDIDATE_PROFILE:
-${JSON.stringify(candidateProfile, null, 2)}
 
 RESUME:
 ${trimResumeText(resumeText)}
@@ -242,10 +192,19 @@ ${trimResumeText(resumeText)}
   return generatedKitSchema.parse(JSON.parse(response.text ?? "{}"));
 }
 
-function normalizeGeneratedSections(sections: z.infer<typeof generatedSectionSchema>[]): GeneratedSection[] {
-  return sections.map((section, sectionIndex) => {
+function normalizeGeneratedSections(
+  sections: z.infer<typeof generatedSectionSchema>[],
+  plan: UserPlan,
+): GeneratedSection[] {
+  const limits = getGenerationLimits(plan);
+  let totalQuestionsUsed = 0;
+
+  return sections.slice(0, limits.sectionCount).map((section, sectionIndex) => {
     const style = getSectionStyle(section.title);
     const sectionId = style.id || slugifySectionTitle(section.title) || `section-${sectionIndex + 1}`;
+    const roomLeft = Math.max(0, limits.totalQuestions - totalQuestionsUsed);
+    const limitedQuestions = section.questions.slice(0, Math.min(limits.maxQuestionsPerSection, roomLeft));
+    totalQuestionsUsed += limitedQuestions.length;
 
     return {
       id: sectionId,
@@ -255,8 +214,8 @@ function normalizeGeneratedSections(sections: z.infer<typeof generatedSectionSch
       textColor: style.textColor,
       description: section.description,
       estimatedHours: section.estimatedHours,
-      priorityScore: section.priorityScore,
-      questions: section.questions.map((question, questionIndex) => ({
+      priorityScore: Math.max(1, Math.min(10, Math.round(section.priorityScore / 10) || 1)),
+      questions: limitedQuestions.map((question, questionIndex) => ({
         id: `${sectionId}-q${questionIndex + 1}`,
         question: question.question,
         difficulty: question.difficulty,
@@ -280,28 +239,29 @@ function normalizeGeneratedSections(sections: z.infer<typeof generatedSectionSch
 export async function generatePrepKitFromResume({
   resumeText,
   onboarding,
+  plan,
 }: {
   resumeText: string;
   onboarding: OnboardingProfile;
+  plan: UserPlan;
 }): Promise<GeneratedPrepKitPayload> {
-  const candidateProfile = await generateCandidateProfileWithGemini({
+  const generatedKit = await generateKitWithGemini({
     resumeText,
     onboarding,
+    plan,
   });
-
-  const generatedKit = await generateSectionsAndQuestionsWithGemini({
-    resumeText,
-    onboarding,
-    candidateProfile,
-  });
+  const normalizedSections = normalizeGeneratedSections(generatedKit.sections, plan);
 
   return {
-    candidateProfile,
-    sections: normalizeGeneratedSections(generatedKit.sections),
+    candidateProfile: generatedKit.candidateProfile,
+    sections: normalizedSections,
     generationMeta: {
       provider: "gemini",
       model: "gemini-2.5-flash",
       generatedFromResume: true,
+      plan,
+      sectionCount: normalizedSections.length,
+      totalQuestions: normalizedSections.reduce((sum, section) => sum + section.questions.length, 0),
     },
   };
 }

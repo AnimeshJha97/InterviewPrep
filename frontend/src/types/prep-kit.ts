@@ -9,6 +9,7 @@ export type InterviewType =
   | "startup";
 
 export type ConfidenceLevel = "beginner" | "intermediate" | "advanced";
+export type UserPlan = "free" | "paid";
 export type PrepKitStatus =
   | "pending"
   | "analyzing_resume"
@@ -18,6 +19,7 @@ export type PrepKitStatus =
   | "failed";
 
 export interface OnboardingProfile {
+  fullName?: string;
   currentRole?: string;
   targetRole?: string;
   yearsOfExperience?: number;
@@ -70,6 +72,9 @@ export interface GeneratedPrepKitPayload {
     provider: "gemini";
     model: string;
     generatedFromResume: true;
+    plan: UserPlan;
+    sectionCount: number;
+    totalQuestions: number;
   };
 }
 

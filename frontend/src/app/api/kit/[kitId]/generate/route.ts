@@ -4,6 +4,7 @@ import { getAuthSession } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/db";
 import { generatePrepKitFromResume } from "@/lib/interview-kit/generate-prep-kit-ai";
 import { PrepKitModel } from "@/models/PrepKit";
+import { UserModel } from "@/models/User";
 
 interface RouteContext {
   params: Promise<{
@@ -20,6 +21,8 @@ export async function POST(_request: Request, context: RouteContext) {
 
   const { kitId } = await context.params;
   await connectToDatabase();
+
+  const user = await UserModel.findById(session.user.id).select("plan").lean();
 
   const prepKit = await PrepKitModel.findOne({
     _id: kitId,
@@ -54,6 +57,7 @@ export async function POST(_request: Request, context: RouteContext) {
     const generated = await generatePrepKitFromResume({
       resumeText: prepKit.resumeText,
       onboarding: prepKit.onboarding ?? {},
+      plan: user?.plan ?? "free",
     });
 
     prepKit.status = "generating_sections";

@@ -213,6 +213,7 @@ function buildCandidateProfile(
 
   return {
     candidateLevel: level,
+    resumeCurrentRole: onboarding.currentRole || onboarding.targetRole || "Resume-inferred role unavailable",
     targetRole: onboarding.targetRole || onboarding.currentRole || "Target interview role",
     strongAreas,
     weakAreas,

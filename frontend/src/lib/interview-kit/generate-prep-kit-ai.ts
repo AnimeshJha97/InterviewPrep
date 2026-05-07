@@ -3,10 +3,19 @@ import { z } from "zod";
 import { getGeminiClient } from "@/lib/ai/gemini";
 import { getGenerationLimits } from "@/lib/interview-kit/generation-limits";
 import { getSectionStyle, slugifySectionTitle } from "@/lib/interview-kit/section-style";
-import type { CandidateProfile, GeneratedPrepKitPayload, GeneratedSection, OnboardingProfile, UserPlan } from "@/types/prep-kit";
+import type {
+  CandidateProfile,
+  ConsistencyIssue,
+  ConsistencySummary,
+  GeneratedPrepKitPayload,
+  GeneratedSection,
+  OnboardingProfile,
+  UserPlan,
+} from "@/types/prep-kit";
 
 const candidateProfileSchema = z.object({
   candidateLevel: z.enum(["junior", "mid", "senior"]),
+  resumeCurrentRole: z.string().min(2),
   targetRole: z.string().min(2),
   strongAreas: z.array(z.string()).min(1).max(16),
   weakAreas: z.array(z.string()).max(16),
@@ -54,6 +63,7 @@ function buildGeneratedKitJsonSchema() {
         type: "object",
         properties: {
           candidateLevel: { type: "string", enum: ["junior", "mid", "senior"] },
+          resumeCurrentRole: { type: "string" },
           targetRole: { type: "string" },
           strongAreas: { type: "array", items: { type: "string" } },
           weakAreas: { type: "array", items: { type: "string" } },
@@ -66,6 +76,7 @@ function buildGeneratedKitJsonSchema() {
         },
         required: [
           "candidateLevel",
+          "resumeCurrentRole",
           "targetRole",
           "strongAreas",
           "weakAreas",
@@ -147,6 +158,127 @@ function uniqueTrimmed(items: string[], max: number, fallback: string[] = []) {
   return fallback.slice(0, max);
 }
 
+function normalizeRoleText(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+const roleStopWords = new Set([
+  "senior",
+  "junior",
+  "lead",
+  "principal",
+  "staff",
+  "associate",
+  "intern",
+  "ii",
+  "iii",
+  "iv",
+]);
+
+function roleTokens(value: string) {
+  return normalizeRoleText(value)
+    .split(" ")
+    .filter((token) => token.length > 2 && !roleStopWords.has(token));
+}
+
+function hasTokenOverlap(left: string, right: string) {
+  const leftTokens = roleTokens(left);
+  const rightTokens = roleTokens(right);
+
+  if (leftTokens.length === 0 || rightTokens.length === 0) {
+    return false;
+  }
+
+  return leftTokens.some((token) => rightTokens.includes(token));
+}
+
+function inferInterviewTypeAlignment(interviewType: OnboardingProfile["interviewType"], skills: string[]) {
+  const normalizedSkills = skills.map((skill) => normalizeRoleText(skill));
+
+  const skillIncludes = (keywords: string[]) => keywords.some((keyword) => normalizedSkills.some((skill) => skill.includes(keyword)));
+
+  if (interviewType === "frontend") {
+    return skillIncludes(["react", "frontend", "ui", "javascript", "typescript", "next"]);
+  }
+
+  if (interviewType === "backend") {
+    return skillIncludes(["node", "backend", "api", "database", "java", "python", "microservice"]);
+  }
+
+  if (interviewType === "system-design") {
+    return skillIncludes(["architecture", "scaling", "distributed", "performance", "system"]);
+  }
+
+  return true;
+}
+
+function buildConsistencySummary(candidateProfile: CandidateProfile, onboarding: OnboardingProfile): ConsistencySummary {
+  const issues: ConsistencyIssue[] = [];
+  const formCurrentRole = onboarding.currentRole?.trim();
+  const formTargetRole = onboarding.targetRole?.trim();
+  const formYears = onboarding.yearsOfExperience;
+  const inferredYears = candidateProfile.yearsOfExperience;
+
+  if (formCurrentRole && candidateProfile.resumeCurrentRole && !hasTokenOverlap(formCurrentRole, candidateProfile.resumeCurrentRole)) {
+    issues.push({
+      code: "current_role_mismatch",
+      severity: "warning",
+      title: "Current role and resume signal do not match",
+      detail: `Profile says "${formCurrentRole}" but the resume reads closer to "${candidateProfile.resumeCurrentRole}".`,
+      recommendation: "Confirm the current role in your profile or upload the matching resume before using this kit for paid preparation.",
+    });
+  }
+
+  if (formTargetRole && candidateProfile.resumeCurrentRole && !hasTokenOverlap(formTargetRole, candidateProfile.resumeCurrentRole)) {
+    issues.push({
+      code: "target_role_low_alignment",
+      severity: "info",
+      title: "Target role is a stretch from the uploaded resume",
+      detail: `Target role is "${formTargetRole}" while the resume currently signals "${candidateProfile.resumeCurrentRole}".`,
+      recommendation: "PrepWise will still optimize for the target role, but expect more gap-filling questions and review whether the uploaded resume is the right version.",
+    });
+  }
+
+  if (typeof formYears === "number" && Math.abs(formYears - inferredYears) >= 2) {
+    issues.push({
+      code: "experience_mismatch",
+      severity: "warning",
+      title: "Years of experience do not align",
+      detail: `Profile says ${formYears} year(s), while resume analysis inferred about ${inferredYears} year(s).`,
+      recommendation: "Update the form or resume so difficulty calibration stays accurate.",
+    });
+  }
+
+  if (onboarding.interviewType && !inferInterviewTypeAlignment(onboarding.interviewType, candidateProfile.extractedSkills)) {
+    issues.push({
+      code: "interview_type_low_alignment",
+      severity: "info",
+      title: "Interview type has low evidence in the resume",
+      detail: `Selected interview type is "${onboarding.interviewType}", but the uploaded resume has limited supporting skill signals.`,
+      recommendation: "Keep the interview type if intentional, otherwise switch it to better match the uploaded resume.",
+    });
+  }
+
+  if (candidateProfile.extractedSkills.length <= 2 || candidateProfile.extractedProjects.length === 0) {
+    issues.push({
+      code: "resume_low_signal",
+      severity: "warning",
+      title: "Resume did not provide strong extraction signals",
+      detail: "PrepWise found limited skills or project detail in the uploaded resume, which can reduce question quality.",
+      recommendation: "Upload a more detailed resume version with project bullets, tools, and responsibilities.",
+    });
+  }
+
+  return {
+    hasConflicts: issues.length > 0,
+    issues,
+  };
+}
+
 async function generateKitWithGemini({
   resumeText,
   onboarding,
@@ -176,6 +308,9 @@ Rules:
 - answer text should be practical, interview-ready, and rooted in real production experience
 - if resume shows enterprise or leadership work, reflect that strongly
 - use years of experience to set difficulty and depth
+- infer resumeCurrentRole from the resume itself, not from the form
+- infer yearsOfExperience from the resume itself, not from the form
+- if target role differs from resume background, still optimize the prep kit for the target role but keep questions anchored to real resume evidence
 - resumeConnection must clearly tie to something from the user's actual background
 - tags should be useful, short, and lowercase
 - commonMistakes should be concrete
@@ -262,6 +397,7 @@ function normalizeCandidateProfile(
 
   return {
     candidateLevel: candidateProfile.candidateLevel,
+    resumeCurrentRole: candidateProfile.resumeCurrentRole.trim() || onboarding.currentRole?.trim() || "Unknown role",
     targetRole,
     strongAreas: uniqueTrimmed(candidateProfile.strongAreas, 8, ["Core strengths still being mapped"]),
     weakAreas: uniqueTrimmed(candidateProfile.weakAreas, 8),
@@ -290,6 +426,7 @@ export async function generatePrepKitFromResume({
   });
   const normalizedSections = normalizeGeneratedSections(generatedKit.sections, plan);
   const normalizedCandidateProfile = normalizeCandidateProfile(generatedKit.candidateProfile, onboarding);
+  const consistencySummary = buildConsistencySummary(normalizedCandidateProfile, onboarding);
 
   return {
     candidateProfile: normalizedCandidateProfile,
@@ -301,6 +438,7 @@ export async function generatePrepKitFromResume({
       plan,
       sectionCount: normalizedSections.length,
       totalQuestions: normalizedSections.reduce((sum, section) => sum + section.questions.length, 0),
+      consistencySummary,
     },
   };
 }

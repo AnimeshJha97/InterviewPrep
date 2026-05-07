@@ -15,6 +15,14 @@ interface EmptyStateConfig {
   ctaHref: string;
 }
 
+interface NoticeConfig {
+  title: string;
+  description: string;
+  items?: string[];
+  ctaLabel?: string;
+  ctaHref?: string;
+}
+
 interface InterviewPrepScreenProps {
   data?: PrepDataset;
   profileName?: string;
@@ -22,6 +30,7 @@ interface InterviewPrepScreenProps {
   kitId?: string;
   questionLimit?: number;
   emptyState?: EmptyStateConfig;
+  notice?: NoticeConfig;
 }
 
 export function InterviewPrepScreen({
@@ -31,6 +40,7 @@ export function InterviewPrepScreen({
   kitId,
   questionLimit,
   emptyState,
+  notice,
 }: InterviewPrepScreenProps) {
   const safeData = useMemo<PrepDataset>(() => data ?? { groups: [] }, [data]);
   const initialCompleted = useMemo(
@@ -265,6 +275,51 @@ export function InterviewPrepScreen({
         />
 
         <div style={{ flex: 1, overflowY: "auto", padding: "16px 24px" }}>
+          {notice ? (
+            <div
+              style={{
+                marginBottom: 16,
+                borderRadius: 16,
+                border: "1px solid rgba(245,158,11,0.24)",
+                background: "rgba(245,158,11,0.1)",
+                padding: "16px 18px",
+              }}
+            >
+              <div style={{ fontSize: 15, fontWeight: 700, color: "#f8fafc", marginBottom: 6 }}>{notice.title}</div>
+              <div style={{ fontSize: 13, lineHeight: 1.7, color: "#fde68a" }}>{notice.description}</div>
+              {notice.items && notice.items.length > 0 ? (
+                <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+                  {notice.items.map((item) => (
+                    <div key={item} style={{ fontSize: 12, lineHeight: 1.6, color: "#fef3c7" }}>
+                      • {item}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+              {notice.ctaLabel && notice.ctaHref ? (
+                <div style={{ marginTop: 14 }}>
+                  <a
+                    href={notice.ctaHref}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      padding: "10px 14px",
+                      borderRadius: 10,
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      background: "rgba(255,255,255,0.08)",
+                      color: "#fff7ed",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      textDecoration: "none",
+                    }}
+                  >
+                    {notice.ctaLabel}
+                  </a>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
           <QuestionList
             questions={visibleQuestions}
             expandedQ={expandedQ}

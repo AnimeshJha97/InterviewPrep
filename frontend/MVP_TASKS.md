@@ -23,6 +23,7 @@
 - [x] Remove static interview-kit fallback and add empty/retry states for failed or missing AI kits
 - [x] Relax and normalize Gemini schema handling for free-tier personalized generation
 - [x] Make free/paid question limits and free-tier retarget limit configurable through environment variables
+- [x] Detect and surface onboarding-vs-resume conflicts for production edge cases
 
 ## Pending
 
@@ -33,3 +34,4 @@
 
 - `src/components/interview_prep.jsx` remains the frozen visual/content reference.
 - New product work should happen in modular app routes, models, API routes, and DB-backed flows.
+- See [PRODUCT_EDGE_CASES.md](D:\Projects\InterviewPrep\frontend\PRODUCT_EDGE_CASES.md) for current public-launch edge-case handling.

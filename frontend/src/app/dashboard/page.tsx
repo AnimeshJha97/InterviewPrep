@@ -8,6 +8,7 @@ import { connectToDatabase } from "@/lib/db";
 import { buildDashboardPrepData } from "@/lib/interview-kit/to-dashboard-data";
 import { PrepKitModel } from "@/models/PrepKit";
 import { UserModel } from "@/models/User";
+import type { ConsistencyIssue } from "@/types/prep-kit";
 
 export default async function DashboardPage() {
   const session = await getAuthSession();
@@ -25,7 +26,7 @@ export default async function DashboardPage() {
   const user = await UserModel.findById(session.user.id).select("latestPrepKitId").lean();
   const latestPrepKit = user?.latestPrepKitId
     ? await PrepKitModel.findById(user.latestPrepKitId)
-        .select("status resumeFileName createdAt sections onboarding candidateProfile")
+        .select("status resumeFileName createdAt sections onboarding candidateProfile generationMeta")
         .lean()
     : null;
 
@@ -44,6 +45,20 @@ export default async function DashboardPage() {
   const extractedSkills = Array.isArray(latestPrepKit?.candidateProfile?.extractedSkills)
     ? latestPrepKit.candidateProfile.extractedSkills.slice(0, 4)
     : [];
+  const consistencyIssues: ConsistencyIssue[] = Array.isArray(latestPrepKit?.generationMeta?.consistencySummary?.issues)
+    ? (latestPrepKit.generationMeta.consistencySummary.issues as ConsistencyIssue[])
+    : [];
+  const notice =
+    latestPrepKit?.status === "completed" && consistencyIssues.length > 0
+      ? {
+          title: "Review your profile inputs",
+          description:
+            "PrepWise detected differences between the uploaded resume and the form data. The kit was still generated, but you should verify the profile before relying on it for serious prep.",
+          items: consistencyIssues.slice(0, 4).map((issue) => `${issue.title}: ${issue.detail}`),
+          ctaLabel: "Edit profile",
+          ctaHref: "/onboarding?edit=1",
+        }
+      : undefined;
   const emptyState = !latestPrepKit
     ? {
         title: "No prep kit yet",
@@ -131,6 +146,7 @@ export default async function DashboardPage() {
         kitId={user?.latestPrepKitId ? String(user.latestPrepKitId) : undefined}
         questionLimit={getQuestionVisibilityLimit(session.user.plan)}
         emptyState={emptyState}
+        notice={notice}
       />
     </div>
   );

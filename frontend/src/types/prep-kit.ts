@@ -33,6 +33,7 @@ export interface OnboardingProfile {
 
 export interface CandidateProfile {
   candidateLevel: "junior" | "mid" | "senior";
+  resumeCurrentRole: string;
   targetRole: string;
   strongAreas: string[];
   weakAreas: string[];
@@ -42,6 +43,24 @@ export interface CandidateProfile {
   extractedProjects: string[];
   experienceSummary: string;
   yearsOfExperience: number;
+}
+
+export interface ConsistencyIssue {
+  code:
+    | "current_role_mismatch"
+    | "target_role_low_alignment"
+    | "experience_mismatch"
+    | "interview_type_low_alignment"
+    | "resume_low_signal";
+  severity: "info" | "warning";
+  title: string;
+  detail: string;
+  recommendation: string;
+}
+
+export interface ConsistencySummary {
+  hasConflicts: boolean;
+  issues: ConsistencyIssue[];
 }
 
 export interface GeneratedQuestion {
@@ -76,6 +95,7 @@ export interface GeneratedPrepKitPayload {
     plan: UserPlan;
     sectionCount: number;
     totalQuestions: number;
+    consistencySummary?: ConsistencySummary;
   };
 }
 

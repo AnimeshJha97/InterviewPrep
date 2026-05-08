@@ -12,7 +12,7 @@ function normalizeResumeText(text: string) {
     .trim();
 }
 
-async function extractPdfText(fileBuffer: Buffer) {
+async function extractPdfTextWithPdfReader(fileBuffer: Buffer) {
   return new Promise<string>((resolve, reject) => {
     const lines: string[] = [];
 
@@ -32,6 +32,34 @@ async function extractPdfText(fileBuffer: Buffer) {
       }
     });
   });
+}
+
+async function extractPdfTextWithPdfParse(fileBuffer: Buffer) {
+  const runtimeGlobal = globalThis as Record<string, unknown>;
+
+  runtimeGlobal.DOMMatrix ??= class DOMMatrix {};
+  runtimeGlobal.ImageData ??= class ImageData {};
+  runtimeGlobal.Path2D ??= class Path2D {};
+
+  const { PDFParse } = await import("pdf-parse");
+  const parser = new PDFParse({ data: fileBuffer });
+
+  try {
+    const result = await parser.getText();
+    return normalizeResumeText(result.text);
+  } finally {
+    await parser.destroy();
+  }
+}
+
+async function extractPdfText(fileBuffer: Buffer) {
+  const primaryText = await extractPdfTextWithPdfReader(fileBuffer);
+
+  if (primaryText.length >= 200) {
+    return primaryText;
+  }
+
+  return extractPdfTextWithPdfParse(fileBuffer);
 }
 
 export async function extractResumeText(fileBuffer: Buffer, fileName: string, mimeType: string) {

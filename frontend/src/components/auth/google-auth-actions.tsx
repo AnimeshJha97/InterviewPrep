@@ -2,33 +2,56 @@
 
 import { signIn, signOut } from "next-auth/react";
 
-export function SignInWithGoogleButton() {
+interface SignInWithGoogleButtonProps {
+  label?: string;
+  compact?: boolean;
+}
+
+interface SignOutButtonProps {
+  label?: string;
+}
+
+export function SignInWithGoogleButton({
+  label = "Continue with Google",
+  compact = false,
+}: SignInWithGoogleButtonProps) {
   return (
     <button
       type="button"
-      onClick={() =>
+      onClick={() => {
+        const currentUrl = new URL(window.location.href);
+
+        currentUrl.searchParams.set("stay", "1");
+        currentUrl.searchParams.delete("error");
+        currentUrl.searchParams.delete("code");
+        currentUrl.searchParams.delete("state");
+
+        const callbackUrl = `${currentUrl.pathname}${currentUrl.search}`;
+
+        window.sessionStorage.setItem("prepwise-auth-return-to", callbackUrl);
+
         signIn("google", {
-          callbackUrl: "/",
+          callbackUrl,
           prompt: "select_account",
-        })
-      }
+        });
+      }}
       style={{
-        padding: "12px 18px",
+        padding: compact ? "10px 16px" : "12px 18px",
         borderRadius: 12,
         border: "1px solid rgba(255,255,255,0.12)",
         background: "linear-gradient(135deg, rgba(99,102,241,0.22), rgba(168,85,247,0.2))",
         color: "#f8fafc",
         cursor: "pointer",
         fontWeight: 600,
-        fontSize: 14,
+        fontSize: compact ? 13 : 14,
       }}
     >
-      Continue with Google
+      {label}
     </button>
   );
 }
 
-export function SignOutButton() {
+export function SignOutButton({ label = "Sign out" }: SignOutButtonProps) {
   return (
     <button
       type="button"
@@ -44,7 +67,7 @@ export function SignOutButton() {
         fontSize: 13,
       }}
     >
-      Sign out
+      {label}
     </button>
   );
 }

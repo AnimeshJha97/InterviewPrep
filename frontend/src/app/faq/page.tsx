@@ -1,15 +1,15 @@
 import { redirect } from "next/navigation";
 
-import { HomeLanding } from "@/components/marketing/home-landing";
+import { FaqLanding } from "@/components/marketing/faq-landing";
 import { getAuthSession } from "@/lib/auth";
 
-interface HomePageProps {
+interface FaqPageProps {
   searchParams?: Promise<{
     stay?: string;
   }>;
 }
 
-export default async function HomePage({ searchParams }: HomePageProps) {
+export default async function FaqPage({ searchParams }: FaqPageProps) {
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const allowStay = resolvedSearchParams?.stay === "1";
   const session = await getAuthSession();
@@ -18,10 +18,5 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     redirect("/dashboard");
   }
 
-  return (
-    <HomeLanding
-      isSignedIn={Boolean(session?.user)}
-      primaryCtaHref={session?.user ? "/onboarding?edit=1" : undefined}
-    />
-  );
+  return <FaqLanding isSignedIn={Boolean(session?.user)} />;
 }

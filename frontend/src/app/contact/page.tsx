@@ -1,15 +1,15 @@
 import { redirect } from "next/navigation";
 
-import { HomeLanding } from "@/components/marketing/home-landing";
+import { ContactLanding } from "@/components/marketing/contact-landing";
 import { getAuthSession } from "@/lib/auth";
 
-interface HomePageProps {
+interface ContactPageProps {
   searchParams?: Promise<{
     stay?: string;
   }>;
 }
 
-export default async function HomePage({ searchParams }: HomePageProps) {
+export default async function ContactPage({ searchParams }: ContactPageProps) {
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const allowStay = resolvedSearchParams?.stay === "1";
   const session = await getAuthSession();
@@ -19,7 +19,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   }
 
   return (
-    <HomeLanding
+    <ContactLanding
       isSignedIn={Boolean(session?.user)}
       primaryCtaHref={session?.user ? "/onboarding?edit=1" : undefined}
     />

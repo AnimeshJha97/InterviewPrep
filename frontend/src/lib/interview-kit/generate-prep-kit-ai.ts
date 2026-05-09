@@ -13,16 +13,30 @@ import type {
   UserPlan,
 } from "@/types/prep-kit";
 
+function limitedStringArray(min: number, max: number) {
+  return z.preprocess(
+    (value) => (Array.isArray(value) ? value.slice(0, max) : value),
+    z.array(z.string()).min(min).max(max),
+  );
+}
+
+function limitedArray<T extends z.ZodType>(schema: T, min: number, max: number) {
+  return z.preprocess(
+    (value) => (Array.isArray(value) ? value.slice(0, max) : value),
+    z.array(schema).min(min).max(max),
+  );
+}
+
 const candidateProfileSchema = z.object({
   candidateLevel: z.enum(["junior", "mid", "senior"]),
   resumeCurrentRole: z.string().min(2),
   targetRole: z.string().min(2),
-  strongAreas: z.array(z.string()).min(1).max(16),
-  weakAreas: z.array(z.string()).max(16),
-  likelyInterviewRounds: z.array(z.string()).min(1).max(12),
-  priorityTopics: z.array(z.string()).min(1).max(16),
-  extractedSkills: z.array(z.string()).min(1).max(32),
-  extractedProjects: z.array(z.string()).min(1).max(16),
+  strongAreas: limitedStringArray(1, 16),
+  weakAreas: limitedStringArray(0, 16),
+  likelyInterviewRounds: limitedStringArray(1, 12),
+  priorityTopics: limitedStringArray(1, 16),
+  extractedSkills: limitedStringArray(1, 32),
+  extractedProjects: limitedStringArray(1, 16),
   experienceSummary: z.string().min(20).max(1500),
   yearsOfExperience: z.number().min(0).max(40),
 });
@@ -31,15 +45,15 @@ const generatedQuestionSchema = z.object({
   question: z.string().min(10),
   difficulty: z.enum(["easy", "medium", "hard"]),
   type: z.enum(["common", "tricky"]).default("common"),
-  tags: z.array(z.string()).min(1).max(8),
+  tags: limitedStringArray(1, 8),
   estimatedMinutes: z.number().int().min(5).max(30),
   whyAsked: z.string().min(20).max(800),
   idealAnswer: z.string().min(80),
   beginnerAnswer: z.string().min(40),
   seniorAnswer: z.string().min(60),
-  followUpQuestions: z.array(z.string()).min(2).max(5),
+  followUpQuestions: limitedStringArray(2, 5),
   resumeConnection: z.string().min(20).max(800),
-  commonMistakes: z.array(z.string()).min(2).max(5),
+  commonMistakes: limitedStringArray(2, 5),
 });
 
 const generatedSectionSchema = z.object({
@@ -47,12 +61,12 @@ const generatedSectionSchema = z.object({
   description: z.string().min(20).max(800),
   estimatedHours: z.number().min(1).max(20),
   priorityScore: z.number().int().min(1).max(100),
-  questions: z.array(generatedQuestionSchema).min(1).max(10),
+  questions: limitedArray(generatedQuestionSchema, 1, 10),
 });
 
 const generatedKitSchema = z.object({
   candidateProfile: candidateProfileSchema,
-  sections: z.array(generatedSectionSchema).min(1).max(12),
+  sections: limitedArray(generatedSectionSchema, 1, 12),
 });
 
 function buildGeneratedKitJsonSchema() {
@@ -65,12 +79,12 @@ function buildGeneratedKitJsonSchema() {
           candidateLevel: { type: "string", enum: ["junior", "mid", "senior"] },
           resumeCurrentRole: { type: "string" },
           targetRole: { type: "string" },
-          strongAreas: { type: "array", items: { type: "string" } },
-          weakAreas: { type: "array", items: { type: "string" } },
-          likelyInterviewRounds: { type: "array", items: { type: "string" } },
-          priorityTopics: { type: "array", items: { type: "string" } },
-          extractedSkills: { type: "array", items: { type: "string" } },
-          extractedProjects: { type: "array", items: { type: "string" } },
+          strongAreas: { type: "array", items: { type: "string" }, maxItems: 16 },
+          weakAreas: { type: "array", items: { type: "string" }, maxItems: 16 },
+          likelyInterviewRounds: { type: "array", items: { type: "string" }, maxItems: 12 },
+          priorityTopics: { type: "array", items: { type: "string" }, maxItems: 16 },
+          extractedSkills: { type: "array", items: { type: "string" }, maxItems: 32 },
+          extractedProjects: { type: "array", items: { type: "string" }, maxItems: 16 },
           experienceSummary: { type: "string" },
           yearsOfExperience: { type: "number" },
         },
@@ -90,6 +104,7 @@ function buildGeneratedKitJsonSchema() {
       },
       sections: {
         type: "array",
+        maxItems: 12,
         items: {
           type: "object",
           properties: {
@@ -99,21 +114,22 @@ function buildGeneratedKitJsonSchema() {
             priorityScore: { type: "number" },
             questions: {
               type: "array",
+              maxItems: 10,
               items: {
                 type: "object",
                 properties: {
                   question: { type: "string" },
                   difficulty: { type: "string", enum: ["easy", "medium", "hard"] },
                   type: { type: "string", enum: ["common", "tricky"] },
-                  tags: { type: "array", items: { type: "string" } },
+                  tags: { type: "array", items: { type: "string" }, maxItems: 8 },
                   estimatedMinutes: { type: "number" },
                   whyAsked: { type: "string" },
                   idealAnswer: { type: "string" },
                   beginnerAnswer: { type: "string" },
                   seniorAnswer: { type: "string" },
-                  followUpQuestions: { type: "array", items: { type: "string" } },
+                  followUpQuestions: { type: "array", items: { type: "string" }, maxItems: 5 },
                   resumeConnection: { type: "string" },
-                  commonMistakes: { type: "array", items: { type: "string" } },
+                  commonMistakes: { type: "array", items: { type: "string" }, maxItems: 5 },
                 },
                 required: [
                   "question",

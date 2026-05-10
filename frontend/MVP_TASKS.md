@@ -24,14 +24,28 @@
 - [x] Relax and normalize Gemini schema handling for free-tier personalized generation
 - [x] Make free/paid question limits and free-tier retarget limit configurable through environment variables
 - [x] Detect and surface onboarding-vs-resume conflicts for production edge cases
+- [x] Add marketing site pages: Home, Features, How It Works, Pricing, About, FAQ, Contact, Terms, Privacy
+- [x] Consolidate shared marketing header, footer, FAQ, and pricing data for consistency
+- [x] Fix Google auth return flow so users return to the same marketing page after complete/cancel
+- [x] Restore scroll reveal animations and refresh-to-top behavior
+- [x] Improve PDF parsing with fallback extraction for complex resumes
+- [x] Add Gemini output hardening for invalid JSON, missing fields, oversized arrays, and schema serving limits
+- [x] Add production-safe structured console logs with required and temporary log categories
+- [x] Add database-backed activity logs with 7-day TTL retention
+- [x] Add DB-backed rate limits for onboarding, resume uploads, and kit generation
+- [x] Add baseline security headers and production auth env fail-fast checks
 
 ## Pending
 
 - [ ] Add payment integration
-- [ ] Add admin and reliability features
+- [ ] Add admin dashboard for activity logs, failed generations, and retry workflows
+- [ ] Add alerting for repeated generation failures, parser failures, and rate-limit spikes
+- [ ] Add formal security review before public paid launch
+- [ ] Add automated abuse tests for upload, generation, and auth flows
 
 ## Notes
 
 - `src/components/interview_prep.jsx` remains the frozen visual/content reference.
 - New product work should happen in modular app routes, models, API routes, and DB-backed flows.
 - See [PRODUCT_EDGE_CASES.md](D:\Projects\InterviewPrep\frontend\PRODUCT_EDGE_CASES.md) for current public-launch edge-case handling.
+- Activity logs are controlled by `PREPWISE_DB_REQUIRED_LOGS` and `PREPWISE_DB_TEMP_LOGS`; MongoDB TTL deletes them after one week.

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getGeminiClient } from "@/lib/ai/gemini";
 import { getGenerationLimits } from "@/lib/interview-kit/generation-limits";
 import { getSectionStyle, slugifySectionTitle } from "@/lib/interview-kit/section-style";
+import { logger } from "@/lib/logger";
 import type {
   CandidateProfile,
   ConsistencyIssue,
@@ -28,40 +29,40 @@ function limitedArray<T extends z.ZodType>(schema: T, min: number, max: number) 
 }
 
 const candidateProfileSchema = z.object({
-  candidateLevel: z.enum(["junior", "mid", "senior"]),
-  resumeCurrentRole: z.string().min(2),
-  targetRole: z.string().min(2),
-  strongAreas: limitedStringArray(1, 16),
+  candidateLevel: z.enum(["junior", "mid", "senior"]).catch("mid"),
+  resumeCurrentRole: z.string().catch("Unknown role"),
+  targetRole: z.string().catch("Interview candidate"),
+  strongAreas: limitedStringArray(0, 16),
   weakAreas: limitedStringArray(0, 16),
-  likelyInterviewRounds: limitedStringArray(1, 12),
-  priorityTopics: limitedStringArray(1, 16),
-  extractedSkills: limitedStringArray(1, 32),
-  extractedProjects: limitedStringArray(1, 16),
-  experienceSummary: z.string().min(20).max(1500),
-  yearsOfExperience: z.number().min(0).max(40),
+  likelyInterviewRounds: limitedStringArray(0, 12),
+  priorityTopics: limitedStringArray(0, 16),
+  extractedSkills: limitedStringArray(0, 32),
+  extractedProjects: limitedStringArray(0, 16),
+  experienceSummary: z.string().max(1500).catch("Resume analysis completed."),
+  yearsOfExperience: z.coerce.number().min(0).max(40).catch(0),
 });
 
 const generatedQuestionSchema = z.object({
-  question: z.string().min(10),
-  difficulty: z.enum(["easy", "medium", "hard"]),
+  question: z.string().catch("Explain one important project from your resume."),
+  difficulty: z.enum(["easy", "medium", "hard"]).catch("medium"),
   type: z.enum(["common", "tricky"]).default("common"),
-  tags: limitedStringArray(1, 8),
-  estimatedMinutes: z.number().int().min(5).max(30),
-  whyAsked: z.string().min(20).max(800),
-  idealAnswer: z.string().min(80),
-  beginnerAnswer: z.string().min(40),
-  seniorAnswer: z.string().min(60),
-  followUpQuestions: limitedStringArray(2, 5),
-  resumeConnection: z.string().min(20).max(800),
-  commonMistakes: limitedStringArray(2, 5),
+  tags: limitedStringArray(0, 8),
+  estimatedMinutes: z.coerce.number().int().min(5).max(30).catch(15),
+  whyAsked: z.string().max(800).catch("Interviewers ask this to verify real experience, clarity, and role fit."),
+  idealAnswer: z.string().catch("Use your resume context, explain the problem, your role, the tradeoffs, and the measurable outcome."),
+  beginnerAnswer: z.string().catch("Start with the project goal, then explain your contribution in simple terms."),
+  seniorAnswer: z.string().catch("Frame the answer around ownership, tradeoffs, system impact, and measurable results."),
+  followUpQuestions: limitedStringArray(0, 5),
+  resumeConnection: z.string().max(800).catch("Connected to the uploaded resume and target role."),
+  commonMistakes: limitedStringArray(0, 5),
 });
 
 const generatedSectionSchema = z.object({
-  title: z.string().min(2),
-  description: z.string().min(20).max(800),
-  estimatedHours: z.number().min(1).max(20),
-  priorityScore: z.number().int().min(1).max(100),
-  questions: limitedArray(generatedQuestionSchema, 1, 10),
+  title: z.string().catch("Resume-Based Interview Prep"),
+  description: z.string().max(800).catch("Questions generated from the uploaded resume and interview context."),
+  estimatedHours: z.coerce.number().min(1).max(20).catch(2),
+  priorityScore: z.coerce.number().int().min(1).max(100).catch(50),
+  questions: limitedArray(generatedQuestionSchema, 0, 10),
 });
 
 const generatedKitSchema = z.object({
@@ -69,95 +70,24 @@ const generatedKitSchema = z.object({
   sections: limitedArray(generatedSectionSchema, 1, 12),
 });
 
-function buildGeneratedKitJsonSchema() {
-  return {
-    type: "object",
-    properties: {
-      candidateProfile: {
-        type: "object",
-        properties: {
-          candidateLevel: { type: "string", enum: ["junior", "mid", "senior"] },
-          resumeCurrentRole: { type: "string" },
-          targetRole: { type: "string" },
-          strongAreas: { type: "array", items: { type: "string" }, maxItems: 16 },
-          weakAreas: { type: "array", items: { type: "string" }, maxItems: 16 },
-          likelyInterviewRounds: { type: "array", items: { type: "string" }, maxItems: 12 },
-          priorityTopics: { type: "array", items: { type: "string" }, maxItems: 16 },
-          extractedSkills: { type: "array", items: { type: "string" }, maxItems: 32 },
-          extractedProjects: { type: "array", items: { type: "string" }, maxItems: 16 },
-          experienceSummary: { type: "string" },
-          yearsOfExperience: { type: "number" },
-        },
-        required: [
-          "candidateLevel",
-          "resumeCurrentRole",
-          "targetRole",
-          "strongAreas",
-          "weakAreas",
-          "likelyInterviewRounds",
-          "priorityTopics",
-          "extractedSkills",
-          "extractedProjects",
-          "experienceSummary",
-          "yearsOfExperience",
-        ],
-      },
-      sections: {
-        type: "array",
-        maxItems: 12,
-        items: {
-          type: "object",
-          properties: {
-            title: { type: "string" },
-            description: { type: "string" },
-            estimatedHours: { type: "number" },
-            priorityScore: { type: "number" },
-            questions: {
-              type: "array",
-              maxItems: 10,
-              items: {
-                type: "object",
-                properties: {
-                  question: { type: "string" },
-                  difficulty: { type: "string", enum: ["easy", "medium", "hard"] },
-                  type: { type: "string", enum: ["common", "tricky"] },
-                  tags: { type: "array", items: { type: "string" }, maxItems: 8 },
-                  estimatedMinutes: { type: "number" },
-                  whyAsked: { type: "string" },
-                  idealAnswer: { type: "string" },
-                  beginnerAnswer: { type: "string" },
-                  seniorAnswer: { type: "string" },
-                  followUpQuestions: { type: "array", items: { type: "string" }, maxItems: 5 },
-                  resumeConnection: { type: "string" },
-                  commonMistakes: { type: "array", items: { type: "string" }, maxItems: 5 },
-                },
-                required: [
-                  "question",
-                  "difficulty",
-                  "type",
-                  "tags",
-                  "estimatedMinutes",
-                  "whyAsked",
-                  "idealAnswer",
-                  "beginnerAnswer",
-                  "seniorAnswer",
-                  "followUpQuestions",
-                  "resumeConnection",
-                  "commonMistakes",
-                ],
-              },
-            },
-          },
-          required: ["title", "description", "estimatedHours", "priorityScore", "questions"],
-        },
-      },
-    },
-    required: ["candidateProfile", "sections"],
-  };
-}
-
 function trimResumeText(resumeText: string) {
   return resumeText.slice(0, 18000);
+}
+
+function parseGeminiJson(text: string) {
+  const trimmed = text.trim();
+  const withoutFence = trimmed
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/i, "")
+    .trim();
+  const objectStart = withoutFence.indexOf("{");
+  const objectEnd = withoutFence.lastIndexOf("}");
+
+  if (objectStart === -1 || objectEnd === -1 || objectEnd <= objectStart) {
+    throw new Error("Gemini returned an empty or invalid JSON response.");
+  }
+
+  return JSON.parse(withoutFence.slice(objectStart, objectEnd + 1));
 }
 
 function uniqueTrimmed(items: string[], max: number, fallback: string[] = []) {
@@ -299,10 +229,12 @@ async function generateKitWithGemini({
   resumeText,
   onboarding,
   plan,
+  requestId,
 }: {
   resumeText: string;
   onboarding: OnboardingProfile;
   plan: UserPlan;
+  requestId?: string;
 }) {
   const client = getGeminiClient();
   const limits = getGenerationLimits(plan);
@@ -321,6 +253,14 @@ Goal:
 
 Rules:
 - section titles should be concise and marketable
+- candidateProfile.extractedSkills max 32 items
+- candidateProfile.strongAreas max 16 items
+- candidateProfile.weakAreas max 16 items
+- candidateProfile.priorityTopics max 16 items
+- candidateProfile.extractedProjects max 16 items
+- each question tags max 8 items
+- each question followUpQuestions max 5 items
+- each question commonMistakes max 5 items
 - answer text should be practical, interview-ready, and rooted in real production experience
 - if resume shows enterprise or leadership work, reflect that strongly
 - use years of experience to set difficulty and depth
@@ -344,17 +284,41 @@ RESUME:
 ${trimResumeText(resumeText)}
 `.trim();
 
+  logger.required.info("ai.gemini.request_started", {
+    requestId,
+    plan,
+    sectionCount: limits.sectionCount,
+    totalQuestions: limits.totalQuestions,
+    maxQuestionsPerSection: limits.maxQuestionsPerSection,
+    resumeCharacters: resumeText.length,
+    promptCharacters: prompt.length,
+  });
+
   const response = await client.models.generateContent({
     model: "gemini-2.5-flash",
     contents: prompt,
     config: {
       temperature: 0.5,
       responseMimeType: "application/json",
-      responseJsonSchema: buildGeneratedKitJsonSchema(),
     },
   });
 
-  return generatedKitSchema.parse(JSON.parse(response.text ?? "{}"));
+  logger.required.info("ai.gemini.response_received", {
+    requestId,
+    responseCharacters: response.text?.length ?? 0,
+  });
+
+  const parsedJson = parseGeminiJson(response.text ?? "");
+  const parsedKit = generatedKitSchema.parse(parsedJson);
+
+  logger.required.info("ai.gemini.response_parsed", {
+    requestId,
+    rawSectionCount: parsedKit.sections.length,
+    rawQuestionCount: parsedKit.sections.reduce((sum, section) => sum + section.questions.length, 0),
+    rawExtractedSkillsCount: parsedKit.candidateProfile.extractedSkills.length,
+  });
+
+  return parsedKit;
 }
 
 function normalizeGeneratedSections(
@@ -368,7 +332,9 @@ function normalizeGeneratedSections(
     const style = getSectionStyle(section.title);
     const sectionId = style.id || slugifySectionTitle(section.title) || `section-${sectionIndex + 1}`;
     const roomLeft = Math.max(0, limits.totalQuestions - totalQuestionsUsed);
-    const limitedQuestions = section.questions.slice(0, Math.min(limits.maxQuestionsPerSection, roomLeft));
+    const limitedQuestions = section.questions
+      .filter((question) => question.question.trim().length > 0)
+      .slice(0, Math.min(limits.maxQuestionsPerSection, roomLeft));
     totalQuestionsUsed += limitedQuestions.length;
 
     return {
@@ -385,15 +351,21 @@ function normalizeGeneratedSections(
         question: question.question,
         difficulty: question.difficulty,
         type: question.type,
-        tags: question.tags,
+        tags: uniqueTrimmed(question.tags, 8, [sectionId]),
         estimatedMinutes: question.estimatedMinutes,
         whyAsked: question.whyAsked,
         idealAnswer: question.idealAnswer,
         beginnerAnswer: question.beginnerAnswer,
         seniorAnswer: question.seniorAnswer,
-        followUpQuestions: question.followUpQuestions,
+        followUpQuestions: uniqueTrimmed(question.followUpQuestions, 5, [
+          "Can you explain the tradeoffs?",
+          "What would you improve next?",
+        ]),
         resumeConnection: question.resumeConnection,
-        commonMistakes: question.commonMistakes,
+        commonMistakes: uniqueTrimmed(question.commonMistakes, 5, [
+          "Answering too generically.",
+          "Not connecting the answer to resume evidence.",
+        ]),
         isCompleted: false,
         userNotes: "",
       })),
@@ -430,19 +402,31 @@ export async function generatePrepKitFromResume({
   resumeText,
   onboarding,
   plan,
+  requestId,
 }: {
   resumeText: string;
   onboarding: OnboardingProfile;
   plan: UserPlan;
+  requestId?: string;
 }): Promise<GeneratedPrepKitPayload> {
   const generatedKit = await generateKitWithGemini({
     resumeText,
     onboarding,
     plan,
+    requestId,
   });
   const normalizedSections = normalizeGeneratedSections(generatedKit.sections, plan);
   const normalizedCandidateProfile = normalizeCandidateProfile(generatedKit.candidateProfile, onboarding);
   const consistencySummary = buildConsistencySummary(normalizedCandidateProfile, onboarding);
+
+  logger.required.info("kit.normalize.completed", {
+    requestId,
+    plan,
+    sectionCount: normalizedSections.length,
+    totalQuestions: normalizedSections.reduce((sum, section) => sum + section.questions.length, 0),
+    extractedSkillsCount: normalizedCandidateProfile.extractedSkills.length,
+    hasConsistencyConflicts: consistencySummary.hasConflicts,
+  });
 
   return {
     candidateProfile: normalizedCandidateProfile,

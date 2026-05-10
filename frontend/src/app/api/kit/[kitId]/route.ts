@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getAuthSession } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/db";
+import { createRequestId, logger } from "@/lib/logger";
 import { PrepKitModel } from "@/models/PrepKit";
 
 interface RouteContext {
@@ -11,9 +12,11 @@ interface RouteContext {
 }
 
 export async function GET(_request: Request, context: RouteContext) {
+  const requestId = createRequestId("kit_get");
   const session = await getAuthSession();
 
   if (!session?.user?.id) {
+    logger.required.warn("kit.get.unauthorized", { requestId });
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -26,8 +29,17 @@ export async function GET(_request: Request, context: RouteContext) {
   }).lean();
 
   if (!prepKit) {
+    logger.required.warn("kit.get.not_found", { requestId, userId: session.user.id, kitId });
     return NextResponse.json({ error: "Prep kit not found." }, { status: 404 });
   }
+
+  logger.temporary.info("kit.get.completed", {
+    requestId,
+    userId: session.user.id,
+    kitId,
+    status: prepKit.status,
+    sectionCount: prepKit.sections?.length ?? 0,
+  });
 
   return NextResponse.json({
     kit: {

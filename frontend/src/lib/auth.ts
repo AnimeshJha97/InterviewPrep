@@ -5,8 +5,18 @@ import { getServerSession } from "next-auth";
 import { connectToDatabase } from "@/lib/db";
 import { UserModel } from "@/models/User";
 
-const googleClientId = process.env.AUTH_GOOGLE_ID ?? "google-client-id-placeholder";
-const googleClientSecret = process.env.AUTH_GOOGLE_SECRET ?? "google-client-secret-placeholder";
+function requiredEnv(name: string, fallback = "") {
+  const value = process.env[name]?.trim();
+
+  if (!value && process.env.NODE_ENV === "production") {
+    throw new Error(`${name} is missing.`);
+  }
+
+  return value || fallback;
+}
+
+const googleClientId = requiredEnv("AUTH_GOOGLE_ID", "google-client-id-placeholder");
+const googleClientSecret = requiredEnv("AUTH_GOOGLE_SECRET", "google-client-secret-placeholder");
 const authSecret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
 
 export const authOptions: NextAuthOptions = {

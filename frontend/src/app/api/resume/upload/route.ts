@@ -13,7 +13,14 @@ const allowedMimeTypes = [
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ];
 
+const allowedExtensions = [".pdf", ".docx"];
 const maxFileSizeInBytes = 5 * 1024 * 1024;
+const staleKitCutoffMs = 10 * 60 * 1000;
+
+function getFileExtension(fileName: string) {
+  const extensionMatch = fileName.toLowerCase().match(/\.[^.]+$/);
+  return extensionMatch?.[0] ?? "";
+}
 
 export async function POST(request: Request) {
   const requestId = createRequestId("resume_upload");
@@ -21,7 +28,7 @@ export async function POST(request: Request) {
 
   if (!session?.user?.id) {
     logger.required.warn("resume.upload.unauthorized", { requestId });
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Unauthorized", requestId }, { status: 401 });
   }
 
   logger.required.info("resume.upload.started", { requestId, userId: session.user.id });
@@ -42,7 +49,7 @@ export async function POST(request: Request) {
       retryAfterSeconds: rateLimit.retryAfterSeconds,
     });
     return NextResponse.json(
-      { error: "Too many resume uploads. Please wait before trying again." },
+      { error: "Too many resume uploads. Please wait before trying again.", requestId },
       { status: 429, headers: { "Retry-After": String(rateLimit.retryAfterSeconds) } },
     );
   }
@@ -52,8 +59,11 @@ export async function POST(request: Request) {
 
   if (!(resume instanceof File)) {
     logger.required.warn("resume.upload.missing_file", { requestId, userId: session.user.id });
-    return NextResponse.json({ error: "Resume file is required." }, { status: 400 });
+    return NextResponse.json({ error: "Resume file is required.", requestId }, { status: 400 });
   }
+
+  const fileExtension = getFileExtension(resume.name);
+  const isSupportedResume = allowedMimeTypes.includes(resume.type) || allowedExtensions.includes(fileExtension);
 
   logger.required.info("resume.upload.file_received", {
     requestId,
@@ -63,14 +73,15 @@ export async function POST(request: Request) {
     mimeType: resume.type,
   });
 
-  if (!allowedMimeTypes.includes(resume.type)) {
+  if (!isSupportedResume) {
     logger.required.warn("resume.upload.unsupported_type", {
       requestId,
       userId: session.user.id,
       fileName: resume.name,
       mimeType: resume.type,
+      fileExtension,
     });
-    return NextResponse.json({ error: "Only PDF and DOCX resumes are supported right now." }, { status: 400 });
+    return NextResponse.json({ error: "Only PDF and DOCX resumes are supported right now.", requestId }, { status: 400 });
   }
 
   if (resume.size > maxFileSizeInBytes) {
@@ -80,7 +91,7 @@ export async function POST(request: Request) {
       fileName: resume.name,
       fileSize: resume.size,
     });
-    return NextResponse.json({ error: "Resume exceeds the 5MB file limit." }, { status: 400 });
+    return NextResponse.json({ error: "Resume exceeds the 5MB file limit.", requestId }, { status: 400 });
   }
 
   const arrayBuffer = await resume.arrayBuffer();
@@ -100,6 +111,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error: error instanceof Error ? error.message : "Failed to parse resume.",
+        requestId,
       },
       { status: 400 },
     );
@@ -111,7 +123,10 @@ export async function POST(request: Request) {
       userId: session.user.id,
       fileName: resume.name,
     });
-    return NextResponse.json({ error: "Could not extract text from the uploaded resume." }, { status: 400 });
+    return NextResponse.json(
+      { error: "Could not extract text from the uploaded resume.", requestId },
+      { status: 400 },
+    );
   }
 
   logger.temporary.info("resume.upload.db_connected", { requestId, userId: session.user.id });
@@ -119,6 +134,24 @@ export async function POST(request: Request) {
   const user = await UserModel.findById(session.user.id).select("onboarding plan").lean();
 
   if (user?.plan === "free") {
+    await PrepKitModel.updateMany(
+      {
+        userId: session.user.id,
+        status: {
+          $in: ["pending", "analyzing_resume", "generating_sections", "generating_questions"],
+        },
+        updatedAt: {
+          $lt: new Date(Date.now() - staleKitCutoffMs),
+        },
+      },
+      {
+        $set: {
+          status: "cancelled",
+          errorMessage: "Auto-cancelled stale generation before a new resume upload.",
+        },
+      },
+    );
+
     const existingKitCount = await PrepKitModel.countDocuments({
       userId: session.user.id,
       status: {
@@ -135,6 +168,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error: "Free plan currently allows one generated prep kit. Upgrade will unlock multiple personalized kits.",
+          requestId,
         },
         { status: 403 },
       );
@@ -175,5 +209,6 @@ export async function POST(request: Request) {
     success: true,
     prepKitId: String(prepKit._id),
     extractedCharacters: resumeText.length,
+    requestId,
   });
 }

@@ -68,7 +68,16 @@ async function extractPdfTextWithPdfParse(fileBuffer: Buffer, requestId?: string
 }
 
 async function extractPdfText(fileBuffer: Buffer, requestId?: string) {
-  const primaryText = await extractPdfTextWithPdfReader(fileBuffer, requestId);
+  let primaryText = "";
+
+  try {
+    primaryText = await extractPdfTextWithPdfReader(fileBuffer, requestId);
+  } catch (error) {
+    logger.required.warn("resume.parser.pdfreader_fallback_after_error", {
+      requestId,
+      error,
+    });
+  }
 
   if (primaryText.length >= 200) {
     logger.required.info("resume.parser.pdfreader_used", {
@@ -83,7 +92,33 @@ async function extractPdfText(fileBuffer: Buffer, requestId?: string) {
     extractedCharacters: primaryText.length,
   });
 
-  return extractPdfTextWithPdfParse(fileBuffer, requestId);
+  try {
+    const fallbackText = await extractPdfTextWithPdfParse(fileBuffer, requestId);
+
+    if (fallbackText.length >= 50) {
+      return fallbackText;
+    }
+
+    logger.required.warn("resume.parser.pdfparse_low_signal", {
+      requestId,
+      extractedCharacters: fallbackText.length,
+    });
+  } catch (error) {
+    logger.required.error("resume.parser.pdfparse_fallback_failed", {
+      requestId,
+      error,
+    });
+  }
+
+  if (primaryText.length > 0) {
+    logger.required.warn("resume.parser.returning_partial_pdfreader_text", {
+      requestId,
+      extractedCharacters: primaryText.length,
+    });
+    return primaryText;
+  }
+
+  throw new Error("Could not extract text from this PDF. Please upload a text-based PDF or DOCX version.");
 }
 
 export async function extractResumeText(fileBuffer: Buffer, fileName: string, mimeType: string, requestId?: string) {

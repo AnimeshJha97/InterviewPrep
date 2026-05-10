@@ -22,7 +22,7 @@ export async function POST(_request: Request, context: RouteContext) {
 
   if (!session?.user?.id) {
     logger.required.warn("kit.generate.unauthorized", { requestId });
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Unauthorized", requestId }, { status: 401 });
   }
 
   const { kitId } = await context.params;
@@ -45,7 +45,7 @@ export async function POST(_request: Request, context: RouteContext) {
       retryAfterSeconds: rateLimit.retryAfterSeconds,
     });
     return NextResponse.json(
-      { error: "Too many kit generation attempts. Please wait before trying again." },
+      { error: "Too many kit generation attempts. Please wait before trying again.", requestId },
       { status: 429, headers: { "Retry-After": String(rateLimit.retryAfterSeconds) } },
     );
   }
@@ -59,7 +59,7 @@ export async function POST(_request: Request, context: RouteContext) {
 
   if (!prepKit) {
     logger.required.warn("kit.generate.not_found", { requestId, userId: session.user.id, kitId });
-    return NextResponse.json({ error: "Prep kit not found." }, { status: 404 });
+    return NextResponse.json({ error: "Prep kit not found.", requestId }, { status: 404 });
   }
 
   if (prepKit.status === "completed") {
@@ -73,12 +73,12 @@ export async function POST(_request: Request, context: RouteContext) {
 
   if (!prepKit.resumeText) {
     logger.required.warn("kit.generate.missing_resume_text", { requestId, userId: session.user.id, kitId });
-    return NextResponse.json({ error: "Resume text is missing for this prep kit." }, { status: 400 });
+    return NextResponse.json({ error: "Resume text is missing for this prep kit.", requestId }, { status: 400 });
   }
 
   if (prepKit.status === "cancelled") {
     logger.required.warn("kit.generate.cancelled", { requestId, userId: session.user.id, kitId });
-    return NextResponse.json({ error: "Prep kit generation was cancelled." }, { status: 409 });
+    return NextResponse.json({ error: "Prep kit generation was cancelled.", requestId }, { status: 409 });
   }
 
   const runningStatuses = ["analyzing_resume", "generating_sections", "generating_questions"];
@@ -217,6 +217,7 @@ export async function POST(_request: Request, context: RouteContext) {
     return NextResponse.json(
       {
         error: prepKit.errorMessage,
+        requestId,
       },
       { status: 500 },
     );

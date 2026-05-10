@@ -17,29 +17,27 @@ export async function assertRateLimit({
   const now = new Date();
   const expiresAt = new Date(now.getTime() + windowMs);
 
-  const record = await RateLimitModel.findOneAndUpdate(
-    {
-      key,
-      $or: [{ expiresAt: { $lte: now } }, { expiresAt: { $gt: now } }],
-    },
-    [
+  let record = await RateLimitModel.findOne({ key });
+
+  if (!record || record.expiresAt <= now) {
+    record = await RateLimitModel.findOneAndUpdate(
+      { key },
       {
         $set: {
           key,
-          count: {
-            $cond: [{ $lte: ["$expiresAt", now] }, 1, { $add: [{ $ifNull: ["$count", 0] }, 1] }],
-          },
-          expiresAt: {
-            $cond: [{ $lte: ["$expiresAt", now] }, expiresAt, "$expiresAt"],
-          },
+          count: 1,
+          expiresAt,
         },
       },
-    ],
-    {
-      upsert: true,
-      returnDocument: "after",
-    },
-  ).lean();
+      {
+        upsert: true,
+        returnDocument: "after",
+      },
+    );
+  } else {
+    record.count += 1;
+    await record.save();
+  }
 
   const count = record?.count ?? 1;
   const retryAfterSeconds = Math.max(1, Math.ceil(((record?.expiresAt ?? expiresAt).getTime() - now.getTime()) / 1000));

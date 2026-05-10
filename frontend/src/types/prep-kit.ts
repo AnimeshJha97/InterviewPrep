@@ -1,12 +1,22 @@
 import type { DifficultyKey, PrepGroup, QuestionType } from "@/components/interview-prep/types";
 
 export type InterviewType =
+  | "role-specific"
   | "frontend"
   | "backend"
   | "full-stack"
   | "system-design"
   | "product-company"
-  | "startup";
+  | "startup"
+  | "design"
+  | "data-analytics"
+  | "product-management"
+  | "sales-marketing"
+  | "finance-accounting"
+  | "operations"
+  | "hr-recruiting"
+  | "leadership-management"
+  | "behavioral";
 
 export type ConfidenceLevel = "beginner" | "intermediate" | "advanced";
 export type UserPlan = "free" | "paid";

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import {
   confidenceLevelOptions,
+  interviewTypeLabels,
   interviewTypeOptions,
   timelineOptions,
   type OnboardingInput,
@@ -35,7 +36,7 @@ export function OnboardingForm({ initialValues }: OnboardingFormProps) {
     currentRole: initialValues?.currentRole ?? "",
     targetRole: initialValues?.targetRole ?? "",
     yearsOfExperience: initialValues?.yearsOfExperience ?? 0,
-    interviewType: initialValues?.interviewType ?? "full-stack",
+    interviewType: initialValues?.interviewType ?? "role-specific",
     targetCompany: initialValues?.targetCompany ?? "",
     jobDescription: initialValues?.jobDescription ?? "",
     confidenceLevel: initialValues?.confidenceLevel ?? "intermediate",
@@ -145,7 +146,7 @@ export function OnboardingForm({ initialValues }: OnboardingFormProps) {
         </div>
 
         <div style={{ display: "grid", gap: 8 }}>
-          <label style={{ fontSize: 13, color: "#cbd5e1" }}>Interview type</label>
+          <label style={{ fontSize: 13, color: "#cbd5e1" }}>Interview focus</label>
           <select
             value={form.interviewType}
             onChange={(event) => updateField("interviewType", event.target.value as OnboardingInput["interviewType"])}
@@ -153,7 +154,7 @@ export function OnboardingForm({ initialValues }: OnboardingFormProps) {
           >
             {interviewTypeOptions.map((option) => (
               <option key={option} value={option} style={{ background: "#13131f" }}>
-                {option}
+                {interviewTypeLabels[option]}
               </option>
             ))}
           </select>

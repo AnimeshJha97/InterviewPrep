@@ -143,6 +143,24 @@ function hasTokenOverlap(left: string, right: string) {
 }
 
 function inferInterviewTypeAlignment(interviewType: OnboardingProfile["interviewType"], skills: string[]) {
+  if (
+    !interviewType ||
+    [
+      "role-specific",
+      "design",
+      "data-analytics",
+      "product-management",
+      "sales-marketing",
+      "finance-accounting",
+      "operations",
+      "hr-recruiting",
+      "leadership-management",
+      "behavioral",
+    ].includes(interviewType)
+  ) {
+    return true;
+  }
+
   const normalizedSkills = skills.map((skill) => normalizeRoleText(skill));
 
   const skillIncludes = (keywords: string[]) => keywords.some((keyword) => normalizedSkills.some((skill) => skill.includes(keyword)));

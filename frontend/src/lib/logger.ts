@@ -18,7 +18,7 @@ function sanitize(value: unknown): unknown {
     return {
       name: value.name,
       message: value.message,
-      stack: isEnabled(process.env.PREPWISE_TEMP_LOGS, false) ? value.stack : undefined,
+      stack: isEnabled(process.env.P3KIT_TEMP_LOGS, false) ? value.stack : undefined,
     };
   }
 
@@ -40,18 +40,18 @@ function sanitize(value: unknown): unknown {
 
 function shouldLog(kind: LogKind) {
   if (kind === "required") {
-    return isEnabled(process.env.PREPWISE_REQUIRED_LOGS, true);
+    return isEnabled(process.env.P3KIT_REQUIRED_LOGS, true);
   }
 
-  return isEnabled(process.env.PREPWISE_TEMP_LOGS, false);
+  return isEnabled(process.env.P3KIT_TEMP_LOGS, false);
 }
 
 function shouldPersist(kind: LogKind) {
   if (kind === "required") {
-    return isEnabled(process.env.PREPWISE_DB_REQUIRED_LOGS, true);
+    return isEnabled(process.env.P3KIT_DB_REQUIRED_LOGS, true);
   }
 
-  return isEnabled(process.env.PREPWISE_DB_TEMP_LOGS, false);
+  return isEnabled(process.env.P3KIT_DB_TEMP_LOGS, false);
 }
 
 async function persistActivityLog(kind: LogKind, level: LogLevel, event: string, meta: LogMeta) {
@@ -79,7 +79,7 @@ async function persistActivityLog(kind: LogKind, level: LogLevel, event: string,
   } catch (error) {
     console.warn(
       JSON.stringify({
-        app: "prepwise",
+        app: "p3kit",
         kind: "required",
         level: "warn",
         event: "activity_log.persist_failed",
@@ -96,7 +96,7 @@ function writeLog(kind: LogKind, level: LogLevel, event: string, meta: LogMeta =
   }
 
   const payload = {
-    app: "prepwise",
+    app: "p3kit",
     kind,
     level,
     event,

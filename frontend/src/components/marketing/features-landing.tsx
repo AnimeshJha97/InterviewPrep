@@ -2,6 +2,7 @@
 
 import { SignInWithGoogleButton, SignOutButton } from "@/components/auth/google-auth-actions";
 import { useMarketingReveal } from "@/components/marketing/use-marketing-reveal";
+import { BRAND } from "@/data/brand";
 
 interface FeaturesLandingProps {
   isSignedIn: boolean;
@@ -83,7 +84,7 @@ export function FeaturesLanding({ isSignedIn, primaryCtaHref }: FeaturesLandingP
       <header className="marketing-nav">
         <div className="marketing-nav-inner">
           <a href="/" className="marketing-brand">
-            PrepWise by Orvion Labs
+            <img src={BRAND.logoDark} alt="" className="marketing-brand-logo" />
           </a>
 
           <nav className="marketing-nav-links" aria-label="Site pages">
@@ -129,7 +130,7 @@ export function FeaturesLanding({ isSignedIn, primaryCtaHref }: FeaturesLandingP
             Everything you need to prepare from <span>your own experience.</span>
           </h1>
           <p className="marketing-hero-copy marketing-float-in marketing-float-in-soft">
-            PrepWise does more than generate questions. It creates a structured interview workspace based on your
+            {BRAND.productName} does more than generate questions. It creates a structured interview workspace based on your
             resume, role, confidence level, and timeline.
           </p>
 
@@ -295,7 +296,7 @@ export function FeaturesLanding({ isSignedIn, primaryCtaHref }: FeaturesLandingP
       <section className="marketing-section features-bottom-cta">
         <div className="features-bottom-panel reveal-section" data-reveal>
           <h2>Your resume already contains your interview roadmap.</h2>
-          <p>Let Orvion Labs AI build the workspace you need to succeed.</p>
+          <p>Let {BRAND.companyName} AI build the workspace you need to succeed.</p>
           {primaryCtaHref ? (
             <a href={primaryCtaHref} className="marketing-primary-button">
               Generate my prep kit
@@ -308,14 +309,16 @@ export function FeaturesLanding({ isSignedIn, primaryCtaHref }: FeaturesLandingP
 
       <footer className="marketing-footer">
         <div className="marketing-footer-inner">
-          <div className="marketing-footer-brand">PrepWise</div>
+          <div className="marketing-footer-brand">
+            <img src={BRAND.logoDark} alt="" className="marketing-footer-logo" />
+          </div>
           <div className="marketing-footer-meta">
             {footerLinks.map((item) => (
               <a key={item.label} href={item.href}>
                 {item.label}
               </a>
             ))}
-            <span>© 2026 Orvion Labs. All rights reserved.</span>
+            <span>© 2026. All rights reserved to {BRAND.companyName}.</span>
           </div>
         </div>
       </footer>

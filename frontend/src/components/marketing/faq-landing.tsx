@@ -3,6 +3,7 @@
 import { MarketingFooter, MarketingHeader } from "@/components/marketing/marketing-chrome";
 import { FaqAccordion } from "@/components/marketing/faq-accordion";
 import { useMarketingReveal } from "@/components/marketing/use-marketing-reveal";
+import { BRAND } from "@/data/brand";
 
 interface FaqLandingProps {
   isSignedIn: boolean;
@@ -28,7 +29,7 @@ export function FaqLanding({ isSignedIn }: FaqLandingProps) {
         <div className="marketing-hero-inner">
           <h1 className="marketing-hero-title marketing-float-in faq-title">Frequently Asked Questions</h1>
           <p className="marketing-hero-copy marketing-float-in marketing-float-in-soft faq-subtitle">
-            Find answers to common questions about PrepWise and how the platform builds personalized interview
+            Find answers to common questions about {BRAND.productName} and how the platform builds personalized interview
             preparation from your resume.
           </p>
         </div>

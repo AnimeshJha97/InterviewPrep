@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { BRAND } from "@/data/brand";
 import { getGeminiClient } from "@/lib/ai/gemini";
 import { getGenerationLimits } from "@/lib/interview-kit/generation-limits";
 import { getSectionStyle, slugifySectionTitle } from "@/lib/interview-kit/section-style";
@@ -203,7 +204,7 @@ function buildConsistencySummary(candidateProfile: CandidateProfile, onboarding:
       severity: "info",
       title: "Target role is a stretch from the uploaded resume",
       detail: `Target role is "${formTargetRole}" while the resume currently signals "${candidateProfile.resumeCurrentRole}".`,
-      recommendation: "PrepWise will still optimize for the target role, but expect more gap-filling questions and review whether the uploaded resume is the right version.",
+      recommendation: `${BRAND.productName} will still optimize for the target role, but expect more gap-filling questions and review whether the uploaded resume is the right version.`,
     });
   }
 
@@ -232,7 +233,7 @@ function buildConsistencySummary(candidateProfile: CandidateProfile, onboarding:
       code: "resume_low_signal",
       severity: "warning",
       title: "Resume did not provide strong extraction signals",
-      detail: "PrepWise found limited skills or project detail in the uploaded resume, which can reduce question quality.",
+      detail: `${BRAND.productName} found limited skills or project detail in the uploaded resume, which can reduce question quality.`,
       recommendation: "Upload a more detailed resume version with project bullets, tools, and responsibilities.",
     });
   }

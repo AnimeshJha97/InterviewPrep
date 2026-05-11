@@ -189,7 +189,7 @@ export function InterviewPrepScreen({
           }}
         >
           <div style={{ fontSize: 12, letterSpacing: 2, color: "#818cf8", fontWeight: 700, marginBottom: 10 }}>
-            PREPWISE
+            P3KIT
           </div>
           <h1 style={{ margin: 0, fontSize: 32, lineHeight: 1.15, color: "#f8fafc" }}>{resolvedEmptyState.title}</h1>
           <p style={{ margin: "14px 0 0", fontSize: 15, lineHeight: 1.8, color: "#94a3b8" }}>

@@ -2,6 +2,7 @@
 
 import { MarketingFooter, MarketingHeader } from "@/components/marketing/marketing-chrome";
 import { useMarketingReveal } from "@/components/marketing/use-marketing-reveal";
+import { BRAND } from "@/data/brand";
 
 interface PrivacyLandingProps {
   isSignedIn: boolean;
@@ -22,7 +23,7 @@ const privacySections = [
   },
   {
     title: "4. AI Processing",
-    body: "PrepWise may use third-party AI models to process resume and preparation data. Content is shared only to complete the requested generation and personalization tasks.",
+    body: `${BRAND.productName} may use third-party AI models to process resume and preparation data. Content is shared only to complete the requested generation and personalization tasks.`,
   },
   {
     title: "5. Data Storage",
@@ -30,7 +31,7 @@ const privacySections = [
   },
   {
     title: "6. Payments",
-    body: "Payments are handled by third-party providers such as Razorpay or equivalent processors. We do not store full payment credentials on PrepWise systems.",
+    body: `Payments are handled by third-party providers such as Razorpay or equivalent processors. We do not store full payment credentials on ${BRAND.productName} systems.`,
   },
   {
     title: "7. Data Sharing",
@@ -66,8 +67,8 @@ export function PrivacyLanding({ isSignedIn }: PrivacyLandingProps) {
       <section className="marketing-section legal-section">
         <div className="legal-card reveal-section" data-reveal>
           <div className="legal-intro">
-            PrepWise by Orvion Labs respects your privacy. This Privacy Policy explains how we collect, use, store,
-            and protect information when you use PrepWise.
+            {BRAND.fullName} respects your privacy. This Privacy Policy explains how we collect, use, store,
+            and protect information when you use {BRAND.productName}.
           </div>
 
           {privacySections.map((section) => (
@@ -81,7 +82,7 @@ export function PrivacyLanding({ isSignedIn }: PrivacyLandingProps) {
             <h2>12. Contact</h2>
             <p>
               For any privacy-related questions, please reach out to us at{" "}
-              <a href="mailto:support@prepwise.in">support@prepwise.in</a>.
+              <a href={`mailto:${BRAND.supportEmail}`}>{BRAND.supportEmail}</a>.
             </p>
           </div>
         </div>

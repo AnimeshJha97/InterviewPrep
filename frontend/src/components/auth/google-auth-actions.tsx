@@ -5,6 +5,7 @@ import { signIn, signOut } from "next-auth/react";
 interface SignInWithGoogleButtonProps {
   label?: string;
   compact?: boolean;
+  className?: string;
 }
 
 interface SignOutButtonProps {
@@ -14,10 +15,12 @@ interface SignOutButtonProps {
 export function SignInWithGoogleButton({
   label = "Continue with Google",
   compact = false,
+  className,
 }: SignInWithGoogleButtonProps) {
   return (
     <button
       type="button"
+      className={className}
       onClick={() => {
         const currentUrl = new URL(window.location.href);
 
@@ -28,7 +31,7 @@ export function SignInWithGoogleButton({
 
         const callbackUrl = `${currentUrl.pathname}${currentUrl.search}`;
 
-        window.sessionStorage.setItem("prepwise-auth-return-to", callbackUrl);
+        window.sessionStorage.setItem("p3kit-auth-return-to", callbackUrl);
 
         signIn("google", {
           callbackUrl,

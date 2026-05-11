@@ -1,3 +1,5 @@
+import { BRAND } from "@/data/brand";
+
 export interface MarketingPricingPlan {
   name: string;
   price: string;
@@ -15,7 +17,7 @@ export const marketingPricingPlans: MarketingPricingPlan[] = [
     name: "Free Starter",
     price: "Rs0",
     note: "",
-    description: "Preview how PrepWise builds your resume-aware preparation kit.",
+    description: `Preview how ${BRAND.productName} builds your resume-aware preparation kit.`,
     features: [
       "Google sign-in",
       "Resume upload",

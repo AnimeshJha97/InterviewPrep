@@ -2,6 +2,7 @@
 
 import { MarketingFooter, MarketingHeader } from "@/components/marketing/marketing-chrome";
 import { useMarketingReveal } from "@/components/marketing/use-marketing-reveal";
+import { BRAND } from "@/data/brand";
 
 interface TermsLandingProps {
   isSignedIn: boolean;
@@ -10,11 +11,11 @@ interface TermsLandingProps {
 const legalSections = [
   {
     title: "Introduction",
-    body: "Welcome to PrepWise by Orvion Labs. These Terms and Conditions govern your use of our website and services. By accessing or using PrepWise, you agree to be bound by these terms. If you disagree with any part of the terms, you may not access the service.",
+    body: `Welcome to ${BRAND.fullName}. These Terms and Conditions govern your use of our website and services. By accessing or using ${BRAND.productName}, you agree to be bound by these terms. If you disagree with any part of the terms, you may not access the service.`,
   },
   {
     title: "1. Use of Service",
-    body: "PrepWise provides AI-powered interview preparation tools. You agree to use the service only for lawful purposes and in a way that does not infringe the rights of, restrict, or inhibit anyone else's use and enjoyment of the service.",
+    body: `${BRAND.productName} provides AI-powered interview preparation tools. You agree to use the service only for lawful purposes and in a way that does not infringe the rights of, restrict, or inhibit anyone else's use and enjoyment of the service.`,
   },
   {
     title: "2. Account and Authentication",
@@ -22,15 +23,15 @@ const legalSections = [
   },
   {
     title: "3. Resume Uploads and User Content",
-    body: "By uploading your resume or providing other content to PrepWise, you grant us the right to process this information to provide our services to you. We do not claim ownership of your content, but we need these rights to operate the service.",
+    body: `By uploading your resume or providing other content to ${BRAND.productName}, you grant us the right to process this information to provide our services to you. We do not claim ownership of your content, but we need these rights to operate the service.`,
   },
   {
     title: "4. AI-Generated Content",
-    body: "PrepWise utilizes artificial intelligence to generate feedback and interview scenarios. While we strive for accuracy, AI-generated content is provided as is and should be used as a guide rather than definitive professional advice.",
+    body: `${BRAND.productName} utilizes artificial intelligence to generate feedback and interview scenarios. While we strive for accuracy, AI-generated content is provided as is and should be used as a guide rather than definitive professional advice.`,
   },
   {
     title: "5. No Job Guarantee",
-    body: "Our services are designed to assist you in preparing for interviews. However, we do not guarantee employment, job offers, or specific outcomes as a result of using PrepWise.",
+    body: `Our services are designed to assist you in preparing for interviews. However, we do not guarantee employment, job offers, or specific outcomes as a result of using ${BRAND.productName}.`,
   },
   {
     title: "6. Payments and Access",
@@ -50,7 +51,7 @@ const legalSections = [
   },
   {
     title: "10. Limitation of Liability",
-    body: "To the maximum extent permitted by law, PrepWise by Orvion Labs shall not be liable for any indirect, incidental, special, consequential, or punitive damages resulting from your use of or inability to use the service.",
+    body: `To the maximum extent permitted by law, ${BRAND.fullName} shall not be liable for any indirect, incidental, special, consequential, or punitive damages resulting from your use of or inability to use the service.`,
   },
   {
     title: "11. Changes to Terms",
@@ -95,7 +96,7 @@ export function TermsLanding({ isSignedIn }: TermsLandingProps) {
             <h2>12. Contact</h2>
             <p>
               If you have any questions about these Terms and Conditions, please contact us at{" "}
-              <a href="mailto:support@prepwise.in">support@prepwise.in</a>.
+              <a href={`mailto:${BRAND.supportEmail}`}>{BRAND.supportEmail}</a>.
             </p>
           </div>
         </div>

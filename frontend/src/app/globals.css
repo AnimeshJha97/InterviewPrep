@@ -75,11 +75,20 @@ select {
 }
 
 .marketing-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
   font-size: 14px;
   font-weight: 700;
   color: #f8fafc;
   text-decoration: none;
   white-space: nowrap;
+}
+
+.marketing-brand-logo {
+  width: 168px;
+  height: 56px;
+  object-fit: contain;
 }
 
 .marketing-nav-links,
@@ -630,10 +639,19 @@ select {
 }
 
 .marketing-footer-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
   color: #f8fafc;
   font-size: 30px;
   font-weight: 700;
   letter-spacing: -0.03em;
+}
+
+.marketing-footer-logo {
+  width: 208px;
+  height: 70px;
+  object-fit: contain;
 }
 
 .marketing-footer-meta {
@@ -2177,10 +2195,10 @@ select {
 }
 
 .faq-page-list {
-  width: min(100%, 1024px);
+  width: min(100%, 760px);
   margin: 0 auto;
   display: grid;
-  gap: 20px;
+  gap: 10px;
 }
 
 .marketing-section.faq .marketing-faq-list {
@@ -2188,13 +2206,13 @@ select {
 }
 
 .faq-page-item {
-  border-radius: 24px;
+  border-radius: 14px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.025)),
     rgba(19, 19, 31, 0.96);
   box-shadow:
-    0 24px 80px rgba(2, 6, 23, 0.28),
+    0 14px 44px rgba(2, 6, 23, 0.22),
     inset 0 1px 0 rgba(255, 255, 255, 0.04);
   overflow: hidden;
 }
@@ -2205,12 +2223,12 @@ select {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
-  padding: 28px 30px;
+  gap: 14px;
+  padding: 15px 18px;
   color: #f8fafc;
-  font-size: clamp(22px, 2.3vw, 34px);
+  font-size: 14px;
   font-weight: 600;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.01em;
 }
 
 .faq-page-item summary::-webkit-details-marker {
@@ -2219,15 +2237,15 @@ select {
 
 .faq-page-icon {
   flex: 0 0 auto;
-  width: 34px;
-  height: 34px;
+  width: 24px;
+  height: 24px;
   display: grid;
   place-items: center;
   border-radius: 999px;
   color: #c4b5fd;
   border: 1px solid rgba(196, 181, 253, 0.22);
   background: rgba(124, 58, 237, 0.08);
-  font-size: 22px;
+  font-size: 16px;
   line-height: 1;
   transition:
     transform 180ms ease,
@@ -2243,10 +2261,10 @@ select {
 
 .faq-page-item p {
   margin: 0;
-  padding: 0 30px 30px;
+  padding: 0 18px 18px;
   color: #cbd5e1;
-  font-size: 15px;
-  line-height: 1.82;
+  font-size: 13px;
+  line-height: 1.68;
 }
 
 .marketing-reveal-ready .reveal-section {
@@ -2489,12 +2507,12 @@ select {
   }
 
   .faq-page-item summary {
-    padding: 22px 22px;
-    font-size: 24px;
+    padding: 14px 16px;
+    font-size: 14px;
   }
 
   .faq-page-item p {
-    padding: 0 22px 24px;
+    padding: 0 16px 16px;
   }
 
   .marketing-footer-brand {

@@ -2,6 +2,7 @@
 
 import { SignInWithGoogleButton, SignOutButton } from "@/components/auth/google-auth-actions";
 import { useMarketingReveal } from "@/components/marketing/use-marketing-reveal";
+import { BRAND } from "@/data/brand";
 
 interface HowItWorksLandingProps {
   isSignedIn: boolean;
@@ -127,7 +128,7 @@ export function HowItWorksLanding({ isSignedIn, primaryCtaHref }: HowItWorksLand
       <header className="marketing-nav">
         <div className="marketing-nav-inner">
           <a href="/" className="marketing-brand">
-            PrepWise by Orvion Labs
+            <img src={BRAND.logoDark} alt="" className="marketing-brand-logo" />
           </a>
 
           <nav className="marketing-nav-links" aria-label="Site pages">
@@ -173,7 +174,7 @@ export function HowItWorksLanding({ isSignedIn, primaryCtaHref }: HowItWorksLand
             From resume upload to interview prep <span>kit in minutes.</span>
           </h1>
           <p className="marketing-hero-copy marketing-float-in marketing-float-in-soft">
-            PrepWise guides you through a simple setup, analyzes your resume, and creates a personalized preparation
+            {BRAND.productName} guides you through a simple setup, analyzes your resume, and creates a personalized preparation
             dashboard based on your actual background.
           </p>
         </div>
@@ -200,8 +201,8 @@ export function HowItWorksLanding({ isSignedIn, primaryCtaHref }: HowItWorksLand
 
       <section className="marketing-section how-analysis-section">
         <div className="marketing-section-header centered reveal-section" data-reveal>
-          <h2>What PrepWise analyzes</h2>
-          <p>Our Orvion AI Engine parses high-fidelity signals from your background.</p>
+          <h2>What {BRAND.productName} analyzes</h2>
+          <p>Our {BRAND.companyName} AI Engine parses high-fidelity signals from your background.</p>
         </div>
 
         <div className="marketing-grid marketing-grid-3">
@@ -275,7 +276,7 @@ export function HowItWorksLanding({ isSignedIn, primaryCtaHref }: HowItWorksLand
         <div className="how-quote-card reveal-section" data-reveal>
           <div className="how-quote-icon">◉</div>
           <p>
-            &quot;PrepWise is designed to support your preparation, not replace your own understanding. Use the generated
+            &quot;{BRAND.productName} is designed to support your preparation, not replace your own understanding. Use the generated
             kit as a structured guide and practice actively.&quot;
           </p>
         </div>
@@ -296,9 +297,11 @@ export function HowItWorksLanding({ isSignedIn, primaryCtaHref }: HowItWorksLand
 
       <footer className="marketing-footer">
         <div className="marketing-footer-inner">
-          <div className="marketing-footer-brand">PrepWise by Orvion Labs</div>
+          <div className="marketing-footer-brand">
+            <img src={BRAND.logoDark} alt="" className="marketing-footer-logo" />
+          </div>
           <div className="marketing-footer-meta">
-            <span>© 2026 Orvion Labs. All rights reserved.</span>
+            <span>© 2026. All rights reserved to {BRAND.companyName}.</span>
             {footerLinks.map((item) => (
               <a key={item.label} href={item.href}>
                 {item.label}

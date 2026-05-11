@@ -221,7 +221,7 @@ export function GenerationStatusClient({
         }}
       >
         <div style={{ fontSize: 12, letterSpacing: 2, color: "#818cf8", fontWeight: 700, marginBottom: 10 }}>
-          PREPWISE BY ORVION LABS
+          P3KIT BY ORVION LABS
         </div>
         <h1 style={{ margin: 0, fontSize: 32, lineHeight: 1.1, color: "#f8fafc" }}>{currentCopy.title}</h1>
         <p style={{ margin: "14px 0 24px", fontSize: 15, lineHeight: 1.7, color: "#94a3b8" }}>{currentCopy.detail}</p>

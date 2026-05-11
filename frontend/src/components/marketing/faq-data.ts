@@ -1,3 +1,5 @@
+import { BRAND } from "@/data/brand";
+
 export interface MarketingFaqItem {
   question: string;
   answer: string;
@@ -5,14 +7,14 @@ export interface MarketingFaqItem {
 
 export const marketingFaqItems: MarketingFaqItem[] = [
   {
-    question: "What is PrepWise?",
+    question: `What is ${BRAND.productName}?`,
     answer:
-      "PrepWise is a resume-aware interview preparation workspace by Orvion Labs. It analyzes your background, target role, and preparation timeline to generate a structured interview prep kit built around your actual experience.",
+      `${BRAND.productName} is a resume-aware interview preparation workspace by ${BRAND.companyName}. It analyzes your background, target role, and preparation timeline to generate a structured interview prep kit built around your actual experience.`,
   },
   {
     question: "How does it work?",
     answer:
-      "You sign in, upload your resume, add your target role and interview context, and PrepWise generates section-wise preparation areas, role-specific questions, guided answer frameworks, and progress tracking inside one dashboard.",
+      `You sign in, upload your resume, add your target role and interview context, and ${BRAND.productName} generates section-wise preparation areas, role-specific questions, guided answer frameworks, and progress tracking inside one dashboard.`,
   },
   {
     question: "Is there a free plan?",
@@ -22,7 +24,7 @@ export const marketingFaqItems: MarketingFaqItem[] = [
   {
     question: "Are the questions generic?",
     answer:
-      "No. PrepWise is designed to generate questions based on your resume signals, experience level, target role, and optional job description so your practice feels aligned with the interviews you are actually preparing for.",
+      `No. ${BRAND.productName} is designed to generate questions based on your resume signals, experience level, target role, and optional job description so your practice feels aligned with the interviews you are actually preparing for.`,
   },
   {
     question: "Can I change my target role later?",
@@ -32,11 +34,11 @@ export const marketingFaqItems: MarketingFaqItem[] = [
   {
     question: "How is my resume data handled?",
     answer:
-      "Your resume is used to analyze skills, projects, seniority, and role fit so PrepWise can create a personalized kit. For details on storage and data handling, please review the Privacy Policy.",
+      `Your resume is used to analyze skills, projects, seniority, and role fit so ${BRAND.productName} can create a personalized kit. For details on storage and data handling, please review the Privacy Policy.`,
   },
   {
     question: "Can I cancel my subscription?",
     answer:
-      "Yes. Subscription and payment handling will follow the active billing terms shown at checkout. If you need help with billing or cancellation, you can contact PrepWise support directly.",
+      `Yes. Subscription and payment handling will follow the active billing terms shown at checkout. If you need help with billing or cancellation, you can contact ${BRAND.productName} support directly.`,
   },
 ];

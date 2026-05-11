@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { SignOutButton } from "@/components/auth/google-auth-actions";
 import { InterviewPrepScreen } from "@/components/interview-prep/screen";
+import { BRAND } from "@/data/brand";
 import { getAuthSession } from "@/lib/auth";
 import { getQuestionVisibilityLimit } from "@/lib/config/plan-limits";
 import { connectToDatabase } from "@/lib/db";
@@ -53,7 +54,7 @@ export default async function DashboardPage() {
       ? {
           title: "Review your profile inputs",
           description:
-            "PrepWise detected differences between the uploaded resume and the form data. The kit was still generated, but you should verify the profile before relying on it for serious prep.",
+            `${BRAND.productName} detected differences between the uploaded resume and the form data. The kit was still generated, but you should verify the profile before relying on it for serious prep.`,
           items: consistencyIssues.slice(0, 4).map((issue) => `${issue.title}: ${issue.detail}`),
           ctaLabel: "Edit profile",
           ctaHref: "/onboarding?edit=1",
@@ -62,7 +63,7 @@ export default async function DashboardPage() {
   const emptyState = !latestPrepKit
     ? {
         title: "No prep kit yet",
-        description: "Upload your resume and save your profile to let PrepWise analyze your background and create questions.",
+        description: `Upload your resume and save your profile to let ${BRAND.productName} analyze your background and create questions.`,
         ctaLabel: "Upload resume",
         ctaHref: "/onboarding?edit=1",
       }
@@ -127,7 +128,7 @@ export default async function DashboardPage() {
               lineHeight: 1.7,
             }}
           >
-            <strong style={{ color: "#f8fafc" }}>PrepWise AI generated this kit.</strong>
+            <strong style={{ color: "#f8fafc" }}>{BRAND.productName} AI generated this kit.</strong>
             <div style={{ marginTop: 6 }}>
               Resume: <span style={{ color: "#a5b4fc" }}>{latestPrepKit.resumeFileName}</span>
             </div>

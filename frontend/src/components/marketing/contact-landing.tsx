@@ -5,6 +5,7 @@ import { FormEvent, useState } from "react";
 import { SignInWithGoogleButton } from "@/components/auth/google-auth-actions";
 import { MarketingFooter, MarketingHeader } from "@/components/marketing/marketing-chrome";
 import { useMarketingReveal } from "@/components/marketing/use-marketing-reveal";
+import { BRAND } from "@/data/brand";
 
 interface ContactLandingProps {
   isSignedIn: boolean;
@@ -16,25 +17,25 @@ const contactCards = [
     icon: "[]",
     title: "Support",
     description: "Technical assistance and account issues.",
-    email: "support@prepwise.in",
+    email: BRAND.supportEmail,
   },
   {
     icon: "$$",
     title: "Payments",
     description: "Billing, subscriptions, and invoicing.",
-    email: "billing@prepwise.in",
+    email: BRAND.billingEmail,
   },
   {
     icon: "<>",
     title: "Feedback",
     description: "Share your thoughts to help us improve.",
-    email: "feedback@prepwise.in",
+    email: BRAND.feedbackEmail,
   },
   {
     icon: "[]",
     title: "Business Inquiries",
     description: "Partnerships and enterprise solutions.",
-    email: "partners@prepwise.in",
+    email: BRAND.partnersEmail,
   },
 ];
 
@@ -67,12 +68,12 @@ export function ContactLanding({ isSignedIn, primaryCtaHref }: ContactLandingPro
     const email = String(form.get("email") ?? "").trim();
     const topic = String(form.get("topic") ?? "").trim();
     const message = String(form.get("message") ?? "").trim();
-    const subject = encodeURIComponent(`PrepWise contact: ${topic || "General inquiry"}`);
+    const subject = encodeURIComponent(`${BRAND.productName} contact: ${topic || "General inquiry"}`);
     const body = encodeURIComponent(
       `Name: ${fullName}\nEmail: ${email}\nTopic: ${topic}\n\nMessage:\n${message}`,
     );
 
-    window.location.href = `mailto:support@prepwise.in?subject=${subject}&body=${body}`;
+    window.location.href = `mailto:${BRAND.supportEmail}?subject=${subject}&body=${body}`;
     setStatusMessage("Your email draft is ready. Send it from your mail app when you are ready.");
   }
 
@@ -85,7 +86,7 @@ export function ContactLanding({ isSignedIn, primaryCtaHref }: ContactLandingPro
         <div className="marketing-hero-inner">
           <div className="marketing-overline-pill marketing-float-in">Contact</div>
           <h1 className="marketing-hero-title marketing-float-in marketing-float-in-delayed">
-            Need help with <span>PrepWise?</span>
+            Need help with <span>{BRAND.productName}?</span>
           </h1>
           <p className="marketing-hero-copy marketing-float-in marketing-float-in-soft">
             Reach out for support, payment questions, feedback, or partnership inquiries.
@@ -142,7 +143,7 @@ export function ContactLanding({ isSignedIn, primaryCtaHref }: ContactLandingPro
               </label>
 
               <div className="contact-note">
-                We usually respond as soon as possible. Please include the email used for your PrepWise account if your
+                We usually respond as soon as possible. Please include the email used for your {BRAND.productName} account if your
                 message is about an existing kit.
               </div>
 

@@ -51,8 +51,8 @@ export async function assertRateLimit({
 }
 
 export const rateLimitConfig = {
-  resumeUploadLimit: readNumber(process.env.PREPWISE_RATE_LIMIT_RESUME_UPLOADS_PER_HOUR, 6),
-  kitGenerateLimit: readNumber(process.env.PREPWISE_RATE_LIMIT_KIT_GENERATIONS_PER_HOUR, 4),
-  onboardingLimit: readNumber(process.env.PREPWISE_RATE_LIMIT_ONBOARDING_PER_HOUR, 12),
+  resumeUploadLimit: readNumber(process.env.P3KIT_RATE_LIMIT_RESUME_UPLOADS_PER_HOUR, 6),
+  kitGenerateLimit: readNumber(process.env.P3KIT_RATE_LIMIT_KIT_GENERATIONS_PER_HOUR, 4),
+  onboardingLimit: readNumber(process.env.P3KIT_RATE_LIMIT_ONBOARDING_PER_HOUR, 12),
   windowMs: 60 * 60 * 1000,
 };

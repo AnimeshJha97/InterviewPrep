@@ -1,6 +1,7 @@
 "use client";
 
 import { SignInWithGoogleButton, SignOutButton } from "@/components/auth/google-auth-actions";
+import { BRAND } from "@/data/brand";
 
 export interface MarketingNavItem {
   label: string;
@@ -37,7 +38,7 @@ export function MarketingHeader({ isSignedIn, navItems }: MarketingHeaderProps) 
     <header className="marketing-nav">
       <div className="marketing-nav-inner">
         <a href="/" className="marketing-brand">
-          PrepWise by Orvion Labs
+          <img src={BRAND.logoDark} alt="" className="marketing-brand-logo" />
         </a>
 
         <nav className="marketing-nav-links" aria-label="Site pages">
@@ -81,14 +82,16 @@ export function MarketingHeader({ isSignedIn, navItems }: MarketingHeaderProps) 
 }
 
 export function MarketingFooter({
-  brand = "PrepWise by Orvion Labs",
+  brand = BRAND.productName,
   links = defaultMarketingFooterLinks,
-  copyright = "© 2024 Orvion Labs. All rights reserved.",
+  copyright = `© 2026. All rights reserved to ${BRAND.companyName}.`,
 }: MarketingFooterProps) {
   return (
     <footer className="marketing-footer">
       <div className="marketing-footer-inner">
-        <div className="marketing-footer-brand">{brand}</div>
+        <div className="marketing-footer-brand">
+          <img src={BRAND.logoDark} alt="" className="marketing-footer-logo" />
+        </div>
         <div className="marketing-footer-meta">
           {links.map((item) => (
             <a key={item.label} href={item.href} className="marketing-footer-link">

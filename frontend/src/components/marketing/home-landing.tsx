@@ -7,6 +7,7 @@ import { FaqAccordion } from "@/components/marketing/faq-accordion";
 import { marketingFaqItems } from "@/components/marketing/faq-data";
 import { MarketingFooter, MarketingHeader } from "@/components/marketing/marketing-chrome";
 import { marketingPricingPlans } from "@/components/marketing/pricing-data";
+import { BRAND } from "@/data/brand";
 
 interface HomeLandingProps {
   isSignedIn: boolean;
@@ -88,7 +89,7 @@ const howItWorks = [
   },
   {
     step: "03",
-    title: "Wait while PrepWise builds your kit",
+    title: `Wait while ${BRAND.productName} builds your kit`,
     text: "Our AI generates section priorities and role-specific questions.",
   },
   {
@@ -248,12 +249,12 @@ export function HomeLanding({ isSignedIn, primaryCtaHref }: HomeLandingProps) {
 
       <section className="marketing-hero">
         <div className="marketing-hero-inner">
-          <div className="marketing-overline-pill marketing-float-in">PrepWise by Orvion Labs</div>
+          <div className="marketing-overline-pill marketing-float-in">{BRAND.fullName}</div>
           <h1 className="marketing-hero-title marketing-float-in marketing-float-in-delayed">
             AI interview prep built around your <span>actual resume.</span>
           </h1>
           <p className="marketing-hero-copy marketing-float-in marketing-float-in-soft">
-            Stop practicing generic questions. PrepWise analyzes your experience and generates a personalized workspace
+            Stop practicing generic questions. {BRAND.productName} analyzes your experience and generates a personalized workspace
             with targeted questions, guided roadmaps, and intelligent feedback.
           </p>
 
@@ -332,7 +333,7 @@ export function HomeLanding({ isSignedIn, primaryCtaHref }: HomeLandingProps) {
 
       <section className="marketing-section process" data-marketing-section="features">
         <div className="marketing-section-header centered reveal-section" data-reveal>
-          <h2>PrepWise turns your resume into a preparation plan</h2>
+          <h2>{BRAND.productName} turns your resume into a preparation plan</h2>
           <p>A streamlined process to get you ready for your next big interview.</p>
         </div>
 
@@ -415,9 +416,11 @@ export function HomeLanding({ isSignedIn, primaryCtaHref }: HomeLandingProps) {
                   {card.cta}
                 </a>
               ) : (
-                <div className="marketing-pricing-cta">
-                  <SignInWithGoogleButton label={card.cta} compact />
-                </div>
+                <SignInWithGoogleButton
+                  label={card.cta}
+                  compact
+                  className={`marketing-pricing-button${card.highlighted ? " primary" : ""}`}
+                />
               )}
             </article>
           ))}
@@ -439,7 +442,7 @@ export function HomeLanding({ isSignedIn, primaryCtaHref }: HomeLandingProps) {
                 <span>{index === 0 ? "−" : "+"}</span>
               </summary>
               <p>
-                PrepWise uses your resume, target role, and project context to build a structured interview prep kit.
+                {BRAND.productName} uses your resume, target role, and project context to build a structured interview prep kit.
                 This section will expand into a full FAQ page next.
               </p>
             </details>
@@ -447,19 +450,7 @@ export function HomeLanding({ isSignedIn, primaryCtaHref }: HomeLandingProps) {
         </div>
       </section>
 
-      <footer className="marketing-footer">
-        <div className="marketing-footer-inner">
-          <div className="marketing-footer-brand">PrepWise by Orvion Labs</div>
-          <div className="marketing-footer-meta">
-            <span>© 2026 Orvion Labs. All rights reserved.</span>
-            {footerLinks.map((item) => (
-              <a key={item.label} href={item.href} className="marketing-footer-link">
-                {item.label}
-              </a>
-            ))}
-          </div>
-        </div>
-      </footer>
+      <MarketingFooter links={footerLinks} />
     </main>
   );
 }

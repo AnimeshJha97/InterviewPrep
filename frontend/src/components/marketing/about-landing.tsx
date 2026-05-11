@@ -3,6 +3,7 @@
 import { SignInWithGoogleButton } from "@/components/auth/google-auth-actions";
 import { MarketingFooter, MarketingHeader } from "@/components/marketing/marketing-chrome";
 import { useMarketingReveal } from "@/components/marketing/use-marketing-reveal";
+import { BRAND } from "@/data/brand";
 
 interface AboutLandingProps {
   isSignedIn: boolean;
@@ -34,12 +35,12 @@ export function AboutLanding({ isSignedIn, primaryCtaHref }: AboutLandingProps) 
 
       <section className="marketing-hero about-hero">
         <div className="marketing-hero-inner">
-          <div className="marketing-overline-pill marketing-float-in">About PrepWise</div>
+          <div className="marketing-overline-pill marketing-float-in">About {BRAND.productName}</div>
           <h1 className="marketing-hero-title marketing-float-in marketing-float-in-delayed">
             Built for people who want interview prep that actually <span>matches their background.</span>
           </h1>
           <p className="marketing-hero-copy marketing-float-in marketing-float-in-soft">
-            PrepWise was created to solve a simple problem: most interview preparation is generic, but real interviews
+            {BRAND.productName} was created to solve a simple problem: most interview preparation is generic, but real interviews
             are personal to your resume, projects, experience, and target role.
           </p>
         </div>
@@ -47,11 +48,11 @@ export function AboutLanding({ isSignedIn, primaryCtaHref }: AboutLandingProps) 
 
       <section className="marketing-section about-story-section">
         <div className="about-story-card reveal-section" data-reveal>
-          <h2>Why we built PrepWise</h2>
+          <h2>Why we built {BRAND.productName}</h2>
           <p>
-            PrepWise started from a simple frustration: most interview preparation resources are generic. They teach
+            {BRAND.productName} started from a simple frustration: most interview preparation resources are generic. They teach
             useful concepts, but they do not understand your resume, your projects, your work experience, or the role
-            you are targeting. So we built PrepWise as a focused preparation workspace that turns a resume into a
+            you are targeting. So we built {BRAND.productName} as a focused preparation workspace that turns a resume into a
             practical interview roadmap.
           </p>
         </div>
@@ -60,10 +61,10 @@ export function AboutLanding({ isSignedIn, primaryCtaHref }: AboutLandingProps) 
       <section className="marketing-section about-labs-section">
         <div className="about-labs-layout">
           <div className="about-labs-copy reveal-section" data-reveal>
-            <h2>Built by Orvion Labs</h2>
+            <h2>Built by {BRAND.companyName}</h2>
             <p>
-              Orvion Labs is an independent product studio focused on building useful software products for real-world
-              workflows. PrepWise is one of our first products, designed to help candidates prepare with more clarity,
+              {BRAND.companyName} is an independent product studio focused on building useful software products for real-world
+              workflows. {BRAND.productName} is one of our first products, designed to help candidates prepare with more clarity,
               less noise, and better structure.
             </p>
           </div>
@@ -89,7 +90,7 @@ export function AboutLanding({ isSignedIn, primaryCtaHref }: AboutLandingProps) 
         <div className="about-quote-card reveal-section" data-reveal>
           <div className="about-quote-mark">"</div>
           <p>
-            &quot;PrepWise is designed as a preparation companion. It does not promise job guarantees. It helps you
+            &quot;{BRAND.productName} is designed as a preparation companion. It does not promise job guarantees. It helps you
             understand what to prepare, why it matters, and how to structure your answers.&quot;
           </p>
           <div className="about-quote-author">Founder note</div>

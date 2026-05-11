@@ -48,4 +48,4 @@
 - `src/components/interview_prep.jsx` remains the frozen visual/content reference.
 - New product work should happen in modular app routes, models, API routes, and DB-backed flows.
 - See [PRODUCT_EDGE_CASES.md](D:\Projects\InterviewPrep\frontend\PRODUCT_EDGE_CASES.md) for current public-launch edge-case handling.
-- Activity logs are controlled by `PREPWISE_DB_REQUIRED_LOGS` and `PREPWISE_DB_TEMP_LOGS`; MongoDB TTL deletes them after one week.
+- Activity logs are controlled by `P3KIT_DB_REQUIRED_LOGS` and `P3KIT_DB_TEMP_LOGS`; MongoDB TTL deletes them after one week.

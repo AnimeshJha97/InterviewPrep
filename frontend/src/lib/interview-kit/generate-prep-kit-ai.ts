@@ -18,14 +18,14 @@ import type {
 function limitedStringArray(min: number, max: number) {
   return z.preprocess(
     (value) => (Array.isArray(value) ? value.slice(0, max) : value),
-    z.array(z.string()).min(min).max(max),
+    z.array(z.string()).min(min).max(max).catch([]),
   );
 }
 
 function limitedArray<T extends z.ZodType>(schema: T, min: number, max: number) {
   return z.preprocess(
     (value) => (Array.isArray(value) ? value.slice(0, max) : value),
-    z.array(schema).min(min).max(max),
+    z.array(schema).min(min).max(max).catch([]),
   );
 }
 
@@ -66,9 +66,23 @@ const generatedSectionSchema = z.object({
   questions: limitedArray(generatedQuestionSchema, 0, 10),
 });
 
+const fallbackCandidateProfile = {
+  candidateLevel: "mid" as const,
+  resumeCurrentRole: "Unknown role",
+  targetRole: "Interview candidate",
+  strongAreas: [],
+  weakAreas: [],
+  likelyInterviewRounds: ["Technical screening"],
+  priorityTopics: ["Role fundamentals"],
+  extractedSkills: [],
+  extractedProjects: [],
+  experienceSummary: "Resume analysis completed with limited structured output.",
+  yearsOfExperience: 0,
+};
+
 const generatedKitSchema = z.object({
-  candidateProfile: candidateProfileSchema,
-  sections: limitedArray(generatedSectionSchema, 1, 12),
+  candidateProfile: candidateProfileSchema.catch(fallbackCandidateProfile),
+  sections: limitedArray(generatedSectionSchema, 0, 12),
 });
 
 function trimResumeText(resumeText: string) {
@@ -89,6 +103,70 @@ function parseGeminiJson(text: string) {
   }
 
   return JSON.parse(withoutFence.slice(objectStart, objectEnd + 1));
+}
+
+function countQuestions(sections: z.infer<typeof generatedSectionSchema>[]) {
+  return sections.reduce((sum, section) => sum + section.questions.length, 0);
+}
+
+function hasUsableGeneratedKit(parsedKit: z.infer<typeof generatedKitSchema>) {
+  return parsedKit.sections.length > 0 && countQuestions(parsedKit.sections) > 0;
+}
+
+function buildRequiredJsonInstructions(limits: ReturnType<typeof getGenerationLimits>) {
+  return `
+MANDATORY OUTPUT CONTRACT:
+- Return exactly one JSON object. No markdown. No comments.
+- candidateProfile is required.
+- candidateProfile.likelyInterviewRounds is required and must be an array.
+- sections is required and must be an array.
+- sections must contain exactly ${limits.sectionCount} items.
+- total questions across all sections must be exactly ${limits.totalQuestions}.
+- every section must contain a questions array.
+- no section may exceed ${limits.maxQuestionsPerSection} questions.
+- if exact resume evidence is limited, infer reasonable values from resume + form. Do not omit fields.
+
+Required JSON shape:
+{
+  "candidateProfile": {
+    "candidateLevel": "junior | mid | senior",
+    "resumeCurrentRole": "string",
+    "targetRole": "string",
+    "strongAreas": ["string"],
+    "weakAreas": ["string"],
+    "likelyInterviewRounds": ["string"],
+    "priorityTopics": ["string"],
+    "extractedSkills": ["string"],
+    "extractedProjects": ["string"],
+    "experienceSummary": "string",
+    "yearsOfExperience": 0
+  },
+  "sections": [
+    {
+      "title": "string",
+      "description": "string",
+      "estimatedHours": 1,
+      "priorityScore": 1,
+      "questions": [
+        {
+          "question": "string",
+          "difficulty": "easy | medium | hard",
+          "type": "common | tricky",
+          "tags": ["string"],
+          "estimatedMinutes": 15,
+          "whyAsked": "string",
+          "idealAnswer": "string",
+          "beginnerAnswer": "string",
+          "seniorAnswer": "string",
+          "followUpQuestions": ["string"],
+          "resumeConnection": "string",
+          "commonMistakes": ["string"]
+        }
+      ]
+    }
+  ]
+}
+`.trim();
 }
 
 function uniqueTrimmed(items: string[], max: number, fallback: string[] = []) {
@@ -257,6 +335,7 @@ async function generateKitWithGemini({
 }) {
   const client = getGeminiClient();
   const limits = getGenerationLimits(plan);
+  const requiredJsonInstructions = buildRequiredJsonInstructions(limits);
   const prompt = `
 You are an expert interview prep strategist.
 
@@ -290,6 +369,8 @@ Rules:
 - tags should be useful, short, and lowercase
 - commonMistakes should be concrete
 - keep the output small and efficient because this runs on a limited test-tier quota
+
+${requiredJsonInstructions}
 
 Return only valid JSON.
 
@@ -327,13 +408,68 @@ ${trimResumeText(resumeText)}
     responseCharacters: response.text?.length ?? 0,
   });
 
-  const parsedJson = parseGeminiJson(response.text ?? "");
-  const parsedKit = generatedKitSchema.parse(parsedJson);
+  let parsedKit = generatedKitSchema.parse({});
+
+  try {
+    parsedKit = generatedKitSchema.parse(parseGeminiJson(response.text ?? ""));
+  } catch (error) {
+    logger.required.warn("ai.gemini.response_parse_failed", {
+      requestId,
+      error,
+    });
+  }
+
+  if (!hasUsableGeneratedKit(parsedKit)) {
+    logger.required.warn("ai.gemini.response_missing_required_data", {
+      requestId,
+      rawSectionCount: parsedKit.sections.length,
+      rawQuestionCount: countQuestions(parsedKit.sections),
+    });
+
+    const repairPrompt = `
+Your previous response missed required interview kit data.
+
+Regenerate the complete response now.
+
+${requiredJsonInstructions}
+
+Return only valid JSON. Do not return empty arrays for sections or questions.
+
+ONBOARDING:
+${JSON.stringify(onboarding, null, 2)}
+
+RESUME:
+${trimResumeText(resumeText)}
+`.trim();
+
+    try {
+      const repairResponse = await client.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: repairPrompt,
+        config: {
+          temperature: 0.35,
+          responseMimeType: "application/json",
+        },
+      });
+
+      logger.required.info("ai.gemini.repair_response_received", {
+        requestId,
+        responseCharacters: repairResponse.text?.length ?? 0,
+      });
+
+      parsedKit = generatedKitSchema.parse(parseGeminiJson(repairResponse.text ?? ""));
+    } catch (error) {
+      logger.required.error("ai.gemini.repair_failed_using_starter_kit", {
+        requestId,
+        error,
+      });
+    }
+  }
 
   logger.required.info("ai.gemini.response_parsed", {
     requestId,
     rawSectionCount: parsedKit.sections.length,
-    rawQuestionCount: parsedKit.sections.reduce((sum, section) => sum + section.questions.length, 0),
+    rawQuestionCount: countQuestions(parsedKit.sections),
     rawExtractedSkillsCount: parsedKit.candidateProfile.extractedSkills.length,
   });
 
@@ -346,8 +482,37 @@ function normalizeGeneratedSections(
 ): GeneratedSection[] {
   const limits = getGenerationLimits(plan);
   let totalQuestionsUsed = 0;
+  const safeSections =
+    sections.length > 0
+      ? sections
+      : [
+          {
+            title: "Resume-Based Interview Prep",
+            description: "Starter questions generated because the AI response missed the section list.",
+            estimatedHours: 2,
+            priorityScore: 80,
+            questions: [
+              {
+                question: "Walk me through the strongest project on your resume and the impact you created.",
+                difficulty: "medium" as const,
+                type: "common" as const,
+                tags: ["resume", "project", "impact"],
+                estimatedMinutes: 15,
+                whyAsked: "Interviewers ask this to verify ownership, clarity, and real project depth.",
+                idealAnswer:
+                  "Explain the business problem, your role, the technical choices, tradeoffs, measurable result, and what you would improve next.",
+                beginnerAnswer: "State the project goal, your contribution, tools used, and final result.",
+                seniorAnswer:
+                  "Frame the answer around scope, constraints, architecture decisions, risk management, and measurable business or engineering impact.",
+                followUpQuestions: ["What tradeoffs did you make?", "How did you measure success?"],
+                resumeConnection: "Based on the uploaded resume and selected target role.",
+                commonMistakes: ["Giving a generic answer.", "Not quantifying impact."],
+              },
+            ],
+          },
+        ];
 
-  return sections.slice(0, limits.sectionCount).map((section, sectionIndex) => {
+  return safeSections.slice(0, limits.sectionCount).map((section, sectionIndex) => {
     const style = getSectionStyle(section.title);
     const sectionId = style.id || slugifySectionTitle(section.title) || `section-${sectionIndex + 1}`;
     const roomLeft = Math.max(0, limits.totalQuestions - totalQuestionsUsed);

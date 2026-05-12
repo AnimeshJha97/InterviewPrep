@@ -5,6 +5,7 @@ import { getGeminiClient } from "@/lib/ai/gemini";
 import { getGenerationLimits } from "@/lib/interview-kit/generation-limits";
 import { getSectionStyle, slugifySectionTitle } from "@/lib/interview-kit/section-style";
 import { logger } from "@/lib/logger";
+import { assertRateLimit } from "@/lib/rate-limit";
 import type {
   CandidateProfile,
   ConsistencyIssue,
@@ -14,6 +15,14 @@ import type {
   OnboardingProfile,
   UserPlan,
 } from "@/types/prep-kit";
+
+const geminiTimeoutMs = 35_000;
+const geminiMinuteWindowMs = 60 * 1000;
+
+function readNumber(value: string | undefined, fallback: number) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
 
 function limitedStringArray(min: number, max: number) {
   return z.preprocess(
@@ -86,7 +95,7 @@ const generatedKitSchema = z.object({
 });
 
 function trimResumeText(resumeText: string) {
-  return resumeText.slice(0, 18000);
+  return resumeText.slice(0, 9000);
 }
 
 function parseGeminiJson(text: string) {
@@ -105,12 +114,42 @@ function parseGeminiJson(text: string) {
   return JSON.parse(withoutFence.slice(objectStart, objectEnd + 1));
 }
 
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string) {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(message)), timeoutMs);
+
+    promise
+      .then(resolve)
+      .catch(reject)
+      .finally(() => clearTimeout(timer));
+  });
+}
+
 function countQuestions(sections: z.infer<typeof generatedSectionSchema>[]) {
   return sections.reduce((sum, section) => sum + section.questions.length, 0);
 }
 
 function hasUsableGeneratedKit(parsedKit: z.infer<typeof generatedKitSchema>) {
   return parsedKit.sections.length > 0 && countQuestions(parsedKit.sections) > 0;
+}
+
+async function assertGeminiMinuteLimit(requestId?: string) {
+  const limit = readNumber(process.env.P3KIT_GEMINI_REQUESTS_PER_MINUTE, 4);
+  const result = await assertRateLimit({
+    key: "gemini-api-global",
+    limit,
+    windowMs: geminiMinuteWindowMs,
+  });
+
+  if (!result.allowed) {
+    logger.required.warn("ai.gemini.global_rate_limited", {
+      requestId,
+      count: result.count,
+      limit: result.limit,
+      retryAfterSeconds: result.retryAfterSeconds,
+    });
+    throw new Error(`AI generation is busy. Please retry in ${result.retryAfterSeconds} seconds.`);
+  }
 }
 
 function buildRequiredJsonInstructions(limits: ReturnType<typeof getGenerationLimits>) {
@@ -394,14 +433,21 @@ ${trimResumeText(resumeText)}
     promptCharacters: prompt.length,
   });
 
-  const response = await client.models.generateContent({
-    model: "gemini-2.5-flash",
-    contents: prompt,
-    config: {
-      temperature: 0.5,
-      responseMimeType: "application/json",
-    },
-  });
+  await assertGeminiMinuteLimit(requestId);
+
+  const response = await withTimeout(
+    client.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt,
+      config: {
+        temperature: 0.35,
+        responseMimeType: "application/json",
+        maxOutputTokens: 12000,
+      },
+    }),
+    geminiTimeoutMs,
+    "Gemini generation timed out before returning a response.",
+  );
 
   logger.required.info("ai.gemini.response_received", {
     requestId,
@@ -443,14 +489,21 @@ ${trimResumeText(resumeText)}
 `.trim();
 
     try {
-      const repairResponse = await client.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: repairPrompt,
-        config: {
-          temperature: 0.35,
-          responseMimeType: "application/json",
-        },
-      });
+      await assertGeminiMinuteLimit(requestId);
+
+      const repairResponse = await withTimeout(
+        client.models.generateContent({
+          model: "gemini-2.5-flash",
+          contents: repairPrompt,
+          config: {
+            temperature: 0.25,
+            responseMimeType: "application/json",
+            maxOutputTokens: 12000,
+          },
+        }),
+        18_000,
+        "Gemini repair timed out before returning a response.",
+      );
 
       logger.required.info("ai.gemini.repair_response_received", {
         requestId,
@@ -459,11 +512,15 @@ ${trimResumeText(resumeText)}
 
       parsedKit = generatedKitSchema.parse(parseGeminiJson(repairResponse.text ?? ""));
     } catch (error) {
-      logger.required.error("ai.gemini.repair_failed_using_starter_kit", {
+      logger.required.error("ai.gemini.repair_failed", {
         requestId,
         error,
       });
     }
+  }
+
+  if (!hasUsableGeneratedKit(parsedKit)) {
+    throw new Error("Gemini did not return required sections and questions. Please retry generation.");
   }
 
   logger.required.info("ai.gemini.response_parsed", {
@@ -482,37 +539,8 @@ function normalizeGeneratedSections(
 ): GeneratedSection[] {
   const limits = getGenerationLimits(plan);
   let totalQuestionsUsed = 0;
-  const safeSections =
-    sections.length > 0
-      ? sections
-      : [
-          {
-            title: "Resume-Based Interview Prep",
-            description: "Starter questions generated because the AI response missed the section list.",
-            estimatedHours: 2,
-            priorityScore: 80,
-            questions: [
-              {
-                question: "Walk me through the strongest project on your resume and the impact you created.",
-                difficulty: "medium" as const,
-                type: "common" as const,
-                tags: ["resume", "project", "impact"],
-                estimatedMinutes: 15,
-                whyAsked: "Interviewers ask this to verify ownership, clarity, and real project depth.",
-                idealAnswer:
-                  "Explain the business problem, your role, the technical choices, tradeoffs, measurable result, and what you would improve next.",
-                beginnerAnswer: "State the project goal, your contribution, tools used, and final result.",
-                seniorAnswer:
-                  "Frame the answer around scope, constraints, architecture decisions, risk management, and measurable business or engineering impact.",
-                followUpQuestions: ["What tradeoffs did you make?", "How did you measure success?"],
-                resumeConnection: "Based on the uploaded resume and selected target role.",
-                commonMistakes: ["Giving a generic answer.", "Not quantifying impact."],
-              },
-            ],
-          },
-        ];
 
-  return safeSections.slice(0, limits.sectionCount).map((section, sectionIndex) => {
+  return sections.slice(0, limits.sectionCount).map((section, sectionIndex) => {
     const style = getSectionStyle(section.title);
     const sectionId = style.id || slugifySectionTitle(section.title) || `section-${sectionIndex + 1}`;
     const roomLeft = Math.max(0, limits.totalQuestions - totalQuestionsUsed);

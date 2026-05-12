@@ -102,6 +102,7 @@ export interface GeneratedPrepKitPayload {
     provider: "gemini";
     model: string;
     generatedFromResume: true;
+    usedFallback?: boolean;
     plan: UserPlan;
     sectionCount: number;
     totalQuestions: number;

@@ -1,22 +1,8 @@
-import { redirect } from "next/navigation";
-
 import { HomeLanding } from "@/components/marketing/home-landing";
 import { getAuthSession } from "@/lib/auth";
 
-interface HomePageProps {
-  searchParams?: Promise<{
-    stay?: string;
-  }>;
-}
-
-export default async function HomePage({ searchParams }: HomePageProps) {
-  const resolvedSearchParams = searchParams ? await searchParams : undefined;
-  const allowStay = resolvedSearchParams?.stay === "1";
+export default async function HomePage() {
   const session = await getAuthSession();
-
-  if (session?.user?.onboardingCompleted && !allowStay) {
-    redirect("/dashboard");
-  }
 
   return (
     <HomeLanding

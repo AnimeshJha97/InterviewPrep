@@ -6,7 +6,10 @@ import favicon from "@/data/assets/favicon.ico";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: BRAND.fullName,
+  title: {
+    default: BRAND.productName,
+    template: `%s | ${BRAND.productName}`,
+  },
   description: BRAND.shortDescription,
   icons: {
     icon: favicon.src,

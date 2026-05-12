@@ -215,7 +215,7 @@ export function InterviewPrepScreen({
               {resolvedEmptyState.ctaLabel}
             </a>
             <a
-              href="/"
+              href="/?stay=1"
               style={{
                 display: "inline-flex",
                 alignItems: "center",

@@ -99,7 +99,7 @@ function trimResumeText(resumeText: string) {
   return resumeText.slice(0, 4500);
 }
 
-function parseGeminiJson(text: string) {
+function parseAiJson(text: string) {
   const trimmed = text.trim();
   const withoutFence = trimmed
     .replace(/^```(?:json)?\s*/i, "")
@@ -109,7 +109,7 @@ function parseGeminiJson(text: string) {
   const objectEnd = withoutFence.lastIndexOf("}");
 
   if (objectStart === -1 || objectEnd === -1 || objectEnd <= objectStart) {
-    throw new Error("Gemini returned an empty or invalid JSON response.");
+    throw new Error("AI provider returned an empty or invalid JSON response.");
   }
 
   return JSON.parse(withoutFence.slice(objectStart, objectEnd + 1));
@@ -399,7 +399,7 @@ function buildConsistencySummary(candidateProfile: CandidateProfile, onboarding:
   };
 }
 
-async function generateKitWithGemini({
+async function generateKitWithAi({
   resumeText,
   onboarding,
   plan,
@@ -462,8 +462,9 @@ RESUME:
 ${trimResumeText(resumeText)}
 `.trim();
 
-  logger.required.info("ai.gemini.request_started", {
+  logger.required.info("ai.provider.request_started", {
     requestId,
+    provider: getAiProvider(),
     plan,
     sectionCount: limits.sectionCount,
     totalQuestions: limits.totalQuestions,
@@ -485,17 +486,21 @@ ${trimResumeText(resumeText)}
   let parsedKit = generatedKitSchema.parse({});
 
   try {
-    parsedKit = generatedKitSchema.parse(parseGeminiJson(response.text));
+    parsedKit = generatedKitSchema.parse(parseAiJson(response.text));
   } catch (error) {
-    logger.required.warn("ai.gemini.response_parse_failed", {
+    logger.required.warn("ai.provider.response_parse_failed", {
       requestId,
+      provider: response.provider,
+      model: response.model,
       error,
     });
   }
 
   if (!hasUsableGeneratedKit(parsedKit)) {
-    logger.required.warn("ai.gemini.response_missing_required_data", {
+    logger.required.warn("ai.provider.response_missing_required_data", {
       requestId,
+      provider: response.provider,
+      model: response.model,
       rawSectionCount: parsedKit.sections.length,
       rawQuestionCount: countQuestions(parsedKit.sections),
     });
@@ -531,21 +536,25 @@ ${trimResumeText(resumeText)}
         responseCharacters: repairResponse.text.length,
       });
 
-      parsedKit = generatedKitSchema.parse(parseGeminiJson(repairResponse.text));
+      parsedKit = generatedKitSchema.parse(parseAiJson(repairResponse.text));
     } catch (error) {
-      logger.required.error("ai.gemini.repair_failed", {
+      logger.required.error("ai.provider.repair_failed", {
         requestId,
+        provider: response.provider,
+        model: response.model,
         error,
       });
     }
   }
 
   if (!hasUsableGeneratedKit(parsedKit)) {
-    throw new Error("Gemini did not return required sections and questions. Please retry generation.");
+    throw new Error(`${response.provider} did not return required sections and questions. Please retry generation.`);
   }
 
-  logger.required.info("ai.gemini.response_parsed", {
+  logger.required.info("ai.provider.response_parsed", {
     requestId,
+    provider: response.provider,
+    model: response.model,
     rawSectionCount: parsedKit.sections.length,
     rawQuestionCount: countQuestions(parsedKit.sections),
     rawExtractedSkillsCount: parsedKit.candidateProfile.extractedSkills.length,
@@ -646,7 +655,7 @@ export async function generatePrepKitFromResume({
   plan: UserPlan;
   requestId?: string;
 }): Promise<GeneratedPrepKitPayload> {
-  const generatedKit = await generateKitWithGemini({
+  const generatedKit = await generateKitWithAi({
     resumeText,
     onboarding,
     plan,

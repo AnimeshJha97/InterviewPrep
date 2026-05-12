@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { BRAND } from "@/data/brand";
 import { getGeminiClient } from "@/lib/ai/gemini";
+import { generateGroqJson } from "@/lib/ai/groq";
 import { getGenerationLimits } from "@/lib/interview-kit/generation-limits";
 import { getSectionStyle, slugifySectionTitle } from "@/lib/interview-kit/section-style";
 import { logger } from "@/lib/logger";
@@ -18,6 +19,11 @@ import type {
 
 const geminiTimeoutMs = 35_000;
 const geminiMinuteWindowMs = 60 * 1000;
+const defaultAiProvider = "groq";
+
+function getAiProvider() {
+  return (process.env.AI_PROVIDER?.trim() || defaultAiProvider).toLowerCase();
+}
 
 function readNumber(value: string | undefined, fallback: number) {
   const parsed = Number(value);
@@ -150,6 +156,71 @@ async function assertGeminiMinuteLimit(requestId?: string) {
     });
     throw new Error(`AI generation is busy. Please retry in ${result.retryAfterSeconds} seconds.`);
   }
+}
+
+async function generateAiJson({
+  prompt,
+  requestId,
+  repair = false,
+}: {
+  prompt: string;
+  requestId?: string;
+  repair?: boolean;
+}) {
+  const provider = getAiProvider();
+
+  if (provider === "groq") {
+    logger.required.info("ai.groq.request_started", {
+      requestId,
+      repair,
+      model: process.env.AI_MODEL?.trim() || "llama-3.3-70b-versatile",
+    });
+
+    const text = await withTimeout(
+      generateGroqJson({
+        prompt,
+        temperature: repair ? 0.15 : 0.25,
+        maxTokens: 12000,
+      }),
+      repair ? 18_000 : geminiTimeoutMs,
+      repair ? "Groq repair timed out before returning a response." : "Groq generation timed out before returning a response.",
+    );
+
+    logger.required.info("ai.groq.response_received", {
+      requestId,
+      repair,
+      responseCharacters: text.length,
+    });
+
+    return {
+      provider: "groq" as const,
+      model: process.env.AI_MODEL?.trim() || "llama-3.3-70b-versatile",
+      text,
+    };
+  }
+
+  await assertGeminiMinuteLimit(requestId);
+
+  const client = getGeminiClient();
+  const response = await withTimeout(
+    client.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt,
+      config: {
+        temperature: repair ? 0.25 : 0.35,
+        responseMimeType: "application/json",
+        maxOutputTokens: 12000,
+      },
+    }),
+    repair ? 18_000 : geminiTimeoutMs,
+    repair ? "Gemini repair timed out before returning a response." : "Gemini generation timed out before returning a response.",
+  );
+
+  return {
+    provider: "gemini" as const,
+    model: "gemini-2.5-flash",
+    text: response.text ?? "",
+  };
 }
 
 function buildRequiredJsonInstructions(limits: ReturnType<typeof getGenerationLimits>) {
@@ -372,7 +443,6 @@ async function generateKitWithGemini({
   plan: UserPlan;
   requestId?: string;
 }) {
-  const client = getGeminiClient();
   const limits = getGenerationLimits(plan);
   const requiredJsonInstructions = buildRequiredJsonInstructions(limits);
   const prompt = `
@@ -433,31 +503,19 @@ ${trimResumeText(resumeText)}
     promptCharacters: prompt.length,
   });
 
-  await assertGeminiMinuteLimit(requestId);
+  const response = await generateAiJson({ prompt, requestId });
 
-  const response = await withTimeout(
-    client.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
-      config: {
-        temperature: 0.35,
-        responseMimeType: "application/json",
-        maxOutputTokens: 12000,
-      },
-    }),
-    geminiTimeoutMs,
-    "Gemini generation timed out before returning a response.",
-  );
-
-  logger.required.info("ai.gemini.response_received", {
+  logger.required.info("ai.provider.response_received", {
     requestId,
-    responseCharacters: response.text?.length ?? 0,
+    provider: response.provider,
+    model: response.model,
+    responseCharacters: response.text.length,
   });
 
   let parsedKit = generatedKitSchema.parse({});
 
   try {
-    parsedKit = generatedKitSchema.parse(parseGeminiJson(response.text ?? ""));
+    parsedKit = generatedKitSchema.parse(parseGeminiJson(response.text));
   } catch (error) {
     logger.required.warn("ai.gemini.response_parse_failed", {
       requestId,
@@ -489,28 +547,16 @@ ${trimResumeText(resumeText)}
 `.trim();
 
     try {
-      await assertGeminiMinuteLimit(requestId);
+      const repairResponse = await generateAiJson({ prompt: repairPrompt, requestId, repair: true });
 
-      const repairResponse = await withTimeout(
-        client.models.generateContent({
-          model: "gemini-2.5-flash",
-          contents: repairPrompt,
-          config: {
-            temperature: 0.25,
-            responseMimeType: "application/json",
-            maxOutputTokens: 12000,
-          },
-        }),
-        18_000,
-        "Gemini repair timed out before returning a response.",
-      );
-
-      logger.required.info("ai.gemini.repair_response_received", {
+      logger.required.info("ai.provider.repair_response_received", {
         requestId,
-        responseCharacters: repairResponse.text?.length ?? 0,
+        provider: repairResponse.provider,
+        model: repairResponse.model,
+        responseCharacters: repairResponse.text.length,
       });
 
-      parsedKit = generatedKitSchema.parse(parseGeminiJson(repairResponse.text ?? ""));
+      parsedKit = generatedKitSchema.parse(parseGeminiJson(repairResponse.text));
     } catch (error) {
       logger.required.error("ai.gemini.repair_failed", {
         requestId,
@@ -530,7 +576,11 @@ ${trimResumeText(resumeText)}
     rawExtractedSkillsCount: parsedKit.candidateProfile.extractedSkills.length,
   });
 
-  return parsedKit;
+  return {
+    ...parsedKit,
+    aiProvider: response.provider,
+    aiModel: response.model,
+  };
 }
 
 function normalizeGeneratedSections(
@@ -644,8 +694,8 @@ export async function generatePrepKitFromResume({
     candidateProfile: normalizedCandidateProfile,
     sections: normalizedSections,
     generationMeta: {
-      provider: "gemini",
-      model: "gemini-2.5-flash",
+      provider: generatedKit.aiProvider,
+      model: generatedKit.aiModel,
       generatedFromResume: true,
       plan,
       sectionCount: normalizedSections.length,

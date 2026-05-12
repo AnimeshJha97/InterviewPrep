@@ -99,7 +99,7 @@ export interface GeneratedPrepKitPayload {
   candidateProfile: CandidateProfile;
   sections: GeneratedSection[];
   generationMeta?: {
-    provider: "gemini" | "groq";
+    provider: "gemini" | "openai";
     model: string;
     generatedFromResume: true;
     usedFallback?: boolean;

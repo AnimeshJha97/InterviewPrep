@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { BRAND } from "@/data/brand";
 import { getGeminiClient } from "@/lib/ai/gemini";
-import { generateGroqJson } from "@/lib/ai/groq";
+import { generateOpenAiJson } from "@/lib/ai/openai";
 import { getGenerationLimits } from "@/lib/interview-kit/generation-limits";
 import { getSectionStyle, slugifySectionTitle } from "@/lib/interview-kit/section-style";
 import { logger } from "@/lib/logger";
@@ -19,7 +19,7 @@ import type {
 
 const geminiTimeoutMs = 35_000;
 const geminiMinuteWindowMs = 60 * 1000;
-const defaultAiProvider = "groq";
+const defaultAiProvider = "openai";
 
 function getAiProvider() {
   return (process.env.AI_PROVIDER?.trim() || defaultAiProvider).toLowerCase();
@@ -191,32 +191,35 @@ async function generateAiJson({
 }) {
   const provider = getAiProvider();
 
-  if (provider === "groq") {
-    logger.required.info("ai.groq.request_started", {
+  if (provider === "openai") {
+    const model = process.env.OPENAI_MODEL?.trim() || "gpt-4.1-mini";
+
+    logger.required.info("ai.openai.request_started", {
       requestId,
       repair,
-      model: process.env.AI_MODEL?.trim() || "llama-3.3-70b-versatile",
+      model,
     });
 
     const text = await withTimeout(
-      generateGroqJson({
+      generateOpenAiJson({
         prompt,
+        model,
         temperature: repair ? 0.15 : 0.25,
-        maxTokens: maxTokens ?? 5500,
+        maxTokens: maxTokens ?? 9000,
       }),
-      repair ? 18_000 : geminiTimeoutMs,
-      repair ? "Groq repair timed out before returning a response." : "Groq generation timed out before returning a response.",
+      repair ? 28_000 : geminiTimeoutMs,
+      repair ? "OpenAI repair timed out before returning a response." : "OpenAI generation timed out before returning a response.",
     );
 
-    logger.required.info("ai.groq.response_received", {
+    logger.required.info("ai.openai.response_received", {
       requestId,
       repair,
       responseCharacters: text.length,
     });
 
     return {
-      provider: "groq" as const,
-      model: process.env.AI_MODEL?.trim() || "llama-3.3-70b-versatile",
+      provider: "openai" as const,
+      model,
       text,
     };
   }
@@ -242,7 +245,7 @@ async function generateAiJson({
         maxOutputTokens: maxTokens ?? (repair ? 4500 : 5500),
       },
     }),
-    repair ? 18_000 : geminiTimeoutMs,
+    repair ? 28_000 : geminiTimeoutMs,
     repair ? "Gemini repair timed out before returning a response." : "Gemini generation timed out before returning a response.",
   );
 
@@ -499,7 +502,7 @@ ${trimResumeText(resumeText)}
     promptCharacters: prompt.length,
   });
 
-  const maxTokens = plan === "free" ? 5500 : 9000;
+  const maxTokens = plan === "free" ? 9000 : 16000;
   const response = await generateAiJson({ prompt, requestId, maxTokens });
 
   logger.required.info("ai.provider.response_received", {
@@ -559,7 +562,7 @@ RESUME: ${trimResumeText(resumeText).slice(0, 2600)}
         prompt: repairPrompt,
         requestId,
         repair: true,
-        maxTokens: plan === "free" ? 4500 : 7000,
+        maxTokens: plan === "free" ? 7000 : 12000,
       });
 
       logger.required.info("ai.provider.repair_response_received", {

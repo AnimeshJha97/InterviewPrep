@@ -115,6 +115,32 @@ function parseAiJson(text: string) {
   return JSON.parse(withoutFence.slice(objectStart, objectEnd + 1));
 }
 
+function unwrapGeneratedKit(value: unknown) {
+  if (!value || typeof value !== "object") {
+    return value;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  if ("candidateProfile" in record || "sections" in record) {
+    return value;
+  }
+
+  for (const key of ["kit", "prepKit", "interviewPrepKit", "data", "result", "output"]) {
+    const nested = record[key];
+
+    if (nested && typeof nested === "object") {
+      const nestedRecord = nested as Record<string, unknown>;
+
+      if ("candidateProfile" in nestedRecord || "sections" in nestedRecord) {
+        return nested;
+      }
+    }
+  }
+
+  return value;
+}
+
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string) {
   return new Promise<T>((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error(message)), timeoutMs);
@@ -486,12 +512,13 @@ ${trimResumeText(resumeText)}
   let parsedKit = generatedKitSchema.parse({});
 
   try {
-    parsedKit = generatedKitSchema.parse(parseAiJson(response.text));
+    parsedKit = generatedKitSchema.parse(unwrapGeneratedKit(parseAiJson(response.text)));
   } catch (error) {
     logger.required.warn("ai.provider.response_parse_failed", {
       requestId,
       provider: response.provider,
       model: response.model,
+      responsePreview: response.text.slice(0, 500),
       error,
     });
   }
@@ -503,22 +530,28 @@ ${trimResumeText(resumeText)}
       model: response.model,
       rawSectionCount: parsedKit.sections.length,
       rawQuestionCount: countQuestions(parsedKit.sections),
+      responsePreview: response.text.slice(0, 500),
     });
 
     const repairPrompt = `
-Your previous response missed required interview kit data.
+Return ONLY valid JSON.
+Create an interview kit from this resume.
 
-Regenerate the complete response now.
+JSON keys:
+candidateProfile: object
+sections: array
 
-${requiredJsonInstructions}
+candidateProfile keys:
+candidateLevel, resumeCurrentRole, targetRole, strongAreas, weakAreas, likelyInterviewRounds, priorityTopics, extractedSkills, extractedProjects, experienceSummary, yearsOfExperience
 
-Return only valid JSON. Do not return empty arrays for sections or questions.
+Create exactly ${limits.sectionCount} sections and exactly ${limits.totalQuestions} total questions.
+Each section needs: title, description, estimatedHours, priorityScore, questions.
+Each question needs: question, difficulty, type, tags, estimatedMinutes, whyAsked, idealAnswer, beginnerAnswer, seniorAnswer, followUpQuestions, resumeConnection, commonMistakes.
+Answers must be short: 2 sentences each.
+No empty sections. No empty questions.
 
-ONBOARDING:
-${JSON.stringify(onboarding, null, 2)}
-
-RESUME:
-${trimResumeText(resumeText)}
+ONBOARDING: ${JSON.stringify(onboarding)}
+RESUME: ${trimResumeText(resumeText).slice(0, 2600)}
 `.trim();
 
     try {
@@ -536,12 +569,13 @@ ${trimResumeText(resumeText)}
         responseCharacters: repairResponse.text.length,
       });
 
-      parsedKit = generatedKitSchema.parse(parseAiJson(repairResponse.text));
+      parsedKit = generatedKitSchema.parse(unwrapGeneratedKit(parseAiJson(repairResponse.text)));
     } catch (error) {
       logger.required.error("ai.provider.repair_failed", {
         requestId,
         provider: response.provider,
         model: response.model,
+        responsePreview: response.text.slice(0, 500),
         error,
       });
     }

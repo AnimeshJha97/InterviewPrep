@@ -54,5 +54,6 @@ export const rateLimitConfig = {
   resumeUploadLimit: readNumber(process.env.P3KIT_RATE_LIMIT_RESUME_UPLOADS_PER_HOUR, 6),
   kitGenerateLimit: readNumber(process.env.P3KIT_RATE_LIMIT_KIT_GENERATIONS_PER_HOUR, 4),
   onboardingLimit: readNumber(process.env.P3KIT_RATE_LIMIT_ONBOARDING_PER_HOUR, 12),
+  geminiRequestsPerMinute: readNumber(process.env.P3KIT_GEMINI_REQUESTS_PER_MINUTE, 4),
   windowMs: 60 * 60 * 1000,
 };

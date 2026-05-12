@@ -6,7 +6,7 @@ import { generateGroqJson } from "@/lib/ai/groq";
 import { getGenerationLimits } from "@/lib/interview-kit/generation-limits";
 import { getSectionStyle, slugifySectionTitle } from "@/lib/interview-kit/section-style";
 import { logger } from "@/lib/logger";
-import { assertRateLimit } from "@/lib/rate-limit";
+import { assertRateLimit, rateLimitConfig } from "@/lib/rate-limit";
 import type {
   CandidateProfile,
   ConsistencyIssue,
@@ -23,11 +23,6 @@ const defaultAiProvider = "groq";
 
 function getAiProvider() {
   return (process.env.AI_PROVIDER?.trim() || defaultAiProvider).toLowerCase();
-}
-
-function readNumber(value: string | undefined, fallback: number) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
 function limitedStringArray(min: number, max: number) {
@@ -101,7 +96,7 @@ const generatedKitSchema = z.object({
 });
 
 function trimResumeText(resumeText: string) {
-  return resumeText.slice(0, 9000);
+  return resumeText.slice(0, 4500);
 }
 
 function parseGeminiJson(text: string) {
@@ -140,10 +135,9 @@ function hasUsableGeneratedKit(parsedKit: z.infer<typeof generatedKitSchema>) {
 }
 
 async function assertGeminiMinuteLimit(requestId?: string) {
-  const limit = readNumber(process.env.P3KIT_GEMINI_REQUESTS_PER_MINUTE, 4);
   const result = await assertRateLimit({
     key: "gemini-api-global",
-    limit,
+    limit: rateLimitConfig.geminiRequestsPerMinute,
     windowMs: geminiMinuteWindowMs,
   });
 
@@ -162,10 +156,12 @@ async function generateAiJson({
   prompt,
   requestId,
   repair = false,
+  maxTokens,
 }: {
   prompt: string;
   requestId?: string;
   repair?: boolean;
+  maxTokens?: number;
 }) {
   const provider = getAiProvider();
 
@@ -180,7 +176,7 @@ async function generateAiJson({
       generateGroqJson({
         prompt,
         temperature: repair ? 0.15 : 0.25,
-        maxTokens: 12000,
+        maxTokens: maxTokens ?? 5500,
       }),
       repair ? 18_000 : geminiTimeoutMs,
       repair ? "Groq repair timed out before returning a response." : "Groq generation timed out before returning a response.",
@@ -201,15 +197,23 @@ async function generateAiJson({
 
   await assertGeminiMinuteLimit(requestId);
 
+  const geminiModel = process.env.GEMINI_MODEL?.trim() || "gemini-2.5-flash";
+
+  logger.required.info("ai.gemini.request_started", {
+    requestId,
+    repair,
+    model: geminiModel,
+  });
+
   const client = getGeminiClient();
   const response = await withTimeout(
     client.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: geminiModel,
       contents: prompt,
       config: {
         temperature: repair ? 0.25 : 0.35,
         responseMimeType: "application/json",
-        maxOutputTokens: 12000,
+        maxOutputTokens: maxTokens ?? (repair ? 4500 : 5500),
       },
     }),
     repair ? 18_000 : geminiTimeoutMs,
@@ -218,7 +222,7 @@ async function generateAiJson({
 
   return {
     provider: "gemini" as const,
-    model: "gemini-2.5-flash",
+    model: geminiModel,
     text: response.text ?? "",
   };
 }
@@ -235,47 +239,10 @@ MANDATORY OUTPUT CONTRACT:
 - every section must contain a questions array.
 - no section may exceed ${limits.maxQuestionsPerSection} questions.
 - if exact resume evidence is limited, infer reasonable values from resume + form. Do not omit fields.
-
-Required JSON shape:
-{
-  "candidateProfile": {
-    "candidateLevel": "junior | mid | senior",
-    "resumeCurrentRole": "string",
-    "targetRole": "string",
-    "strongAreas": ["string"],
-    "weakAreas": ["string"],
-    "likelyInterviewRounds": ["string"],
-    "priorityTopics": ["string"],
-    "extractedSkills": ["string"],
-    "extractedProjects": ["string"],
-    "experienceSummary": "string",
-    "yearsOfExperience": 0
-  },
-  "sections": [
-    {
-      "title": "string",
-      "description": "string",
-      "estimatedHours": 1,
-      "priorityScore": 1,
-      "questions": [
-        {
-          "question": "string",
-          "difficulty": "easy | medium | hard",
-          "type": "common | tricky",
-          "tags": ["string"],
-          "estimatedMinutes": 15,
-          "whyAsked": "string",
-          "idealAnswer": "string",
-          "beginnerAnswer": "string",
-          "seniorAnswer": "string",
-          "followUpQuestions": ["string"],
-          "resumeConnection": "string",
-          "commonMistakes": ["string"]
-        }
-      ]
-    }
-  ]
-}
+- Required keys: candidateProfile, sections.
+- Candidate keys: candidateLevel, resumeCurrentRole, targetRole, strongAreas, weakAreas, likelyInterviewRounds, priorityTopics, extractedSkills, extractedProjects, experienceSummary, yearsOfExperience.
+- Section keys: title, description, estimatedHours, priorityScore, questions.
+- Question keys: question, difficulty, type, tags, estimatedMinutes, whyAsked, idealAnswer, beginnerAnswer, seniorAnswer, followUpQuestions, resumeConnection, commonMistakes.
 `.trim();
 }
 
@@ -468,7 +435,9 @@ Rules:
 - each question tags max 8 items
 - each question followUpQuestions max 5 items
 - each question commonMistakes max 5 items
-- answer text should be practical, interview-ready, and rooted in real production experience
+- answer text should be concise, practical, interview-ready, and rooted in real production experience
+- idealAnswer, beginnerAnswer, seniorAnswer should each be 2-4 sentences
+- whyAsked and resumeConnection should each be 1-2 sentences
 - if resume shows enterprise or leadership work, reflect that strongly
 - use years of experience to set difficulty and depth
 - infer resumeCurrentRole from the resume itself, not from the form
@@ -503,7 +472,8 @@ ${trimResumeText(resumeText)}
     promptCharacters: prompt.length,
   });
 
-  const response = await generateAiJson({ prompt, requestId });
+  const maxTokens = plan === "free" ? 5500 : 9000;
+  const response = await generateAiJson({ prompt, requestId, maxTokens });
 
   logger.required.info("ai.provider.response_received", {
     requestId,
@@ -547,7 +517,12 @@ ${trimResumeText(resumeText)}
 `.trim();
 
     try {
-      const repairResponse = await generateAiJson({ prompt: repairPrompt, requestId, repair: true });
+      const repairResponse = await generateAiJson({
+        prompt: repairPrompt,
+        requestId,
+        repair: true,
+        maxTokens: plan === "free" ? 4500 : 7000,
+      });
 
       logger.required.info("ai.provider.repair_response_received", {
         requestId,

@@ -95,8 +95,200 @@ const generatedKitSchema = z.object({
   sections: limitedArray(generatedSectionSchema, 0, 12),
 });
 
-function trimResumeText(resumeText: string) {
-  return resumeText.slice(0, 4500);
+const resumeContextCharacterLimit = 2400;
+const repairResumeContextCharacterLimit = 1500;
+const jobDescriptionCharacterLimit = 700;
+
+const promptStopWords = new Set([
+  "about",
+  "above",
+  "after",
+  "again",
+  "also",
+  "and",
+  "are",
+  "because",
+  "been",
+  "being",
+  "can",
+  "did",
+  "does",
+  "for",
+  "from",
+  "had",
+  "has",
+  "have",
+  "into",
+  "its",
+  "more",
+  "not",
+  "our",
+  "over",
+  "per",
+  "than",
+  "that",
+  "the",
+  "their",
+  "then",
+  "there",
+  "this",
+  "through",
+  "using",
+  "was",
+  "were",
+  "with",
+  "work",
+  "you",
+  "your",
+]);
+
+const resumeSignalWords = [
+  "experience",
+  "project",
+  "projects",
+  "built",
+  "developed",
+  "designed",
+  "implemented",
+  "optimized",
+  "migrated",
+  "integrated",
+  "deployed",
+  "led",
+  "owned",
+  "managed",
+  "skills",
+  "technologies",
+  "tools",
+  "stack",
+  "achievement",
+  "impact",
+  "reduced",
+  "increased",
+  "improved",
+  "system",
+  "api",
+  "database",
+  "cloud",
+  "architecture",
+  "education",
+  "certification",
+];
+
+function compactWhitespace(value: string) {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function limitCharacters(value: string, maxCharacters: number) {
+  const compacted = compactWhitespace(value);
+
+  if (compacted.length <= maxCharacters) {
+    return compacted;
+  }
+
+  return compacted.slice(0, maxCharacters).replace(/\s+\S*$/, "").trim();
+}
+
+function extractPromptKeywords(value: string, maxItems: number) {
+  const counts = new Map<string, number>();
+  const matches = value.match(/[a-zA-Z][a-zA-Z0-9+#./-]{1,}/g) ?? [];
+
+  for (const match of matches) {
+    const normalized = match.toLowerCase();
+
+    if (normalized.length < 3 || promptStopWords.has(normalized)) {
+      continue;
+    }
+
+    counts.set(normalized, (counts.get(normalized) ?? 0) + 1);
+  }
+
+  return Array.from(counts.entries())
+    .sort((left, right) => right[1] - left[1] || right[0].length - left[0].length)
+    .slice(0, maxItems)
+    .map(([keyword]) => keyword);
+}
+
+function scoreResumeLine(line: string) {
+  const normalized = line.toLowerCase();
+  let score = 0;
+
+  for (const word of resumeSignalWords) {
+    if (normalized.includes(word)) {
+      score += 2;
+    }
+  }
+
+  if (/\b(react|next|node|typescript|javascript|python|java|aws|azure|gcp|mongodb|sql|redis|docker|kubernetes)\b/i.test(line)) {
+    score += 3;
+  }
+
+  if (/\d/.test(line)) {
+    score += 1;
+  }
+
+  if (/%|\$|x\b|ms\b|sec\b|users?\b|requests?\b|revenue\b|latency\b|scale\b/i.test(line)) {
+    score += 2;
+  }
+
+  return score;
+}
+
+function compactResumeContext(resumeText: string, maxCharacters = resumeContextCharacterLimit) {
+  const normalizedLines = resumeText
+    .split(/\r?\n|[•●▪]/)
+    .map((line) => limitCharacters(line, 220))
+    .filter((line) => line.length >= 8);
+
+  const seen = new Set<string>();
+  const uniqueLines = normalizedLines.filter((line) => {
+    const key = line.toLowerCase();
+
+    if (seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+    return true;
+  });
+
+  const selectedIndexes = new Set<number>();
+
+  uniqueLines.slice(0, 8).forEach((_, index) => selectedIndexes.add(index));
+
+  uniqueLines
+    .map((line, index) => ({ index, score: scoreResumeLine(line) }))
+    .filter((item) => item.score > 0)
+    .sort((left, right) => right.score - left.score || left.index - right.index)
+    .slice(0, 24)
+    .forEach((item) => selectedIndexes.add(item.index));
+
+  const evidence = Array.from(selectedIndexes)
+    .sort((left, right) => left - right)
+    .map((index) => uniqueLines[index]);
+  const keywords = extractPromptKeywords(resumeText, 70);
+  const compacted = [`keywords=${keywords.join(", ")}`, `evidence=${evidence.join(" | ")}`].filter(Boolean).join("\n");
+
+  return limitCharacters(compacted || resumeText, maxCharacters);
+}
+
+function compactOnboardingContext(onboarding: OnboardingProfile) {
+  const compact: Record<string, number | string> = {};
+
+  if (onboarding.fullName) compact.name = limitCharacters(onboarding.fullName, 80);
+  if (onboarding.currentRole) compact.currentRole = limitCharacters(onboarding.currentRole, 120);
+  if (onboarding.targetRole) compact.targetRole = limitCharacters(onboarding.targetRole, 120);
+  if (typeof onboarding.yearsOfExperience === "number") compact.years = onboarding.yearsOfExperience;
+  if (onboarding.interviewType) compact.interviewType = onboarding.interviewType;
+  if (onboarding.targetCompany) compact.targetCompany = limitCharacters(onboarding.targetCompany, 120);
+  if (onboarding.confidenceLevel) compact.confidence = onboarding.confidenceLevel;
+  if (onboarding.timelineDays) compact.timelineDays = onboarding.timelineDays;
+  if (onboarding.jobDescription) {
+    const keywords = extractPromptKeywords(onboarding.jobDescription, 45).join(", ");
+    compact.jobDescription = limitCharacters(`${keywords ? `keywords=${keywords}; ` : ""}${onboarding.jobDescription}`, jobDescriptionCharacterLimit);
+  }
+
+  return JSON.stringify(compact);
 }
 
 function parseAiJson(text: string) {
@@ -441,41 +633,19 @@ async function generateKitWithAi({
 }) {
   const limits = getGenerationLimits(plan);
   const requiredJsonInstructions = buildRequiredJsonInstructions(limits);
+  const onboardingContext = compactOnboardingContext(onboarding);
+  const resumeContext = compactResumeContext(resumeText);
   const prompt = `
-You are an expert interview prep strategist.
-
-Goal:
-- analyze the candidate and create one complete personalized prep kit
-- create exactly ${limits.sectionCount} sections
-- create exactly ${limits.totalQuestions} total questions across all sections
-- no section may exceed ${limits.maxQuestionsPerSection} questions
-- questions must be specific to this user's resume, projects, seniority, tools, and likely interview loops
-- questions must not feel generic
-- use project-based cross-questions when useful
-- include frontend/backend/system design/behavioral balance only if justified by resume and target role
+You are an interview prep strategist. Generate one resume-specific kit.
 
 Rules:
-- section titles should be concise and marketable
-- candidateProfile.extractedSkills max 32 items
-- candidateProfile.strongAreas max 16 items
-- candidateProfile.weakAreas max 16 items
-- candidateProfile.priorityTopics max 16 items
-- candidateProfile.extractedProjects max 16 items
-- each question tags max 8 items
-- each question followUpQuestions max 5 items
-- each question commonMistakes max 5 items
-- answer text should be concise, practical, interview-ready, and rooted in real production experience
-- idealAnswer, beginnerAnswer, seniorAnswer should each be 2-4 sentences
-- whyAsked and resumeConnection should each be 1-2 sentences
-- if resume shows enterprise or leadership work, reflect that strongly
-- use years of experience to set difficulty and depth
-- infer resumeCurrentRole from the resume itself, not from the form
-- infer yearsOfExperience from the resume itself, not from the form
-- if target role differs from resume background, still optimize the prep kit for the target role but keep questions anchored to real resume evidence
-- resumeConnection must clearly tie to something from the user's actual background
-- tags should be useful, short, and lowercase
-- commonMistakes should be concrete
-- keep the output small and efficient because this runs on a limited test-tier quota
+- exactly ${limits.sectionCount} sections, exactly ${limits.totalQuestions} total questions, max ${limits.maxQuestionsPerSection} questions/section
+- optimize for form target role, but anchor every question to resume evidence
+- infer resumeCurrentRole and yearsOfExperience from resume evidence, not form claims
+- include only interview areas supported by resume, target role, job description, or likely loop
+- avoid generic questions; use project, tool, seniority, tradeoff, and impact signals
+- concise output: answers 2-4 sentences; whyAsked/resumeConnection 1 sentence each
+- caps: skills 32, projects 16, strong/weak/priority arrays 16, tags 8, followUps/commonMistakes 5
 
 ${requiredJsonInstructions}
 
@@ -484,11 +654,11 @@ Return only valid JSON.
 PLAN:
 ${plan}
 
-ONBOARDING:
-${JSON.stringify(onboarding, null, 2)}
+FORM:
+${onboardingContext}
 
-RESUME:
-${trimResumeText(resumeText)}
+RESUME_SIGNAL:
+${resumeContext}
 `.trim();
 
   logger.required.info("ai.provider.request_started", {
@@ -499,6 +669,8 @@ ${trimResumeText(resumeText)}
     totalQuestions: limits.totalQuestions,
     maxQuestionsPerSection: limits.maxQuestionsPerSection,
     resumeCharacters: resumeText.length,
+    compactResumeCharacters: resumeContext.length,
+    compactOnboardingCharacters: onboardingContext.length,
     promptCharacters: prompt.length,
   });
 
@@ -538,7 +710,7 @@ ${trimResumeText(resumeText)}
 
     const repairPrompt = `
 Return ONLY valid JSON.
-Create an interview kit from this resume.
+Create an interview kit from compact form and resume signals.
 
 JSON keys:
 candidateProfile: object
@@ -553,8 +725,8 @@ Each question needs: question, difficulty, type, tags, estimatedMinutes, whyAske
 Answers must be short: 2 sentences each.
 No empty sections. No empty questions.
 
-ONBOARDING: ${JSON.stringify(onboarding)}
-RESUME: ${trimResumeText(resumeText).slice(0, 2600)}
+FORM: ${onboardingContext}
+RESUME_SIGNAL: ${compactResumeContext(resumeText, repairResumeContextCharacterLimit)}
 `.trim();
 
     try {

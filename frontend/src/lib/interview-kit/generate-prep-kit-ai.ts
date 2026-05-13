@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { BRAND } from "@/data/brand";
 import { getGeminiClient } from "@/lib/ai/gemini";
-import { generateOpenAiJson } from "@/lib/ai/openai";
+import { generateOpenAiJson, prepKitJsonSchema } from "@/lib/ai/openai";
 import { getGenerationLimits } from "@/lib/interview-kit/generation-limits";
 import { getSectionStyle, slugifySectionTitle } from "@/lib/interview-kit/section-style";
 import { logger } from "@/lib/logger";
@@ -18,6 +18,7 @@ import type {
 } from "@/types/prep-kit";
 
 const geminiTimeoutMs = 35_000;
+const geminiThinkingBudget = 512;
 const geminiMinuteWindowMs = 60 * 1000;
 const defaultAiProvider = "openai";
 
@@ -236,7 +237,7 @@ function scoreResumeLine(line: string) {
 
 function compactResumeContext(resumeText: string, maxCharacters = resumeContextCharacterLimit) {
   const normalizedLines = resumeText
-    .split(/\r?\n|[•●▪]/)
+    .split(new RegExp(`\\r?\\n|[${String.fromCharCode(8226, 9679, 9642)}]`))
     .map((line) => limitCharacters(line, 220))
     .filter((line) => line.length >= 8);
 
@@ -424,6 +425,7 @@ async function generateAiJson({
     requestId,
     repair,
     model: geminiModel,
+    thinkingBudget: geminiThinkingBudget,
   });
 
   const client = getGeminiClient();
@@ -434,6 +436,10 @@ async function generateAiJson({
       config: {
         temperature: repair ? 0.25 : 0.35,
         responseMimeType: "application/json",
+        responseJsonSchema: prepKitJsonSchema,
+        thinkingConfig: {
+          thinkingBudget: geminiThinkingBudget,
+        },
         maxOutputTokens: maxTokens ?? (repair ? 4500 : 5500),
       },
     }),

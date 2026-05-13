@@ -22,6 +22,7 @@ Priority:
 | --- | --- | --- | --- |
 | Stabilize happy path | Doing | P0 | Upload -> AI -> dashboard must work |
 | Reduce AI prompt payload | Done | P0 | Compress resume/form context without changing required output schema |
+| Stabilize Gemini generation | Done | P0 | Add bounded thinking and structured output schema |
 | OpenAI provider integration | Done | P0 | Default provider |
 | Remove Groq | Done | P0 | Removed from code/env |
 | Gemini optional provider | Done | P1 | Available with `AI_PROVIDER=gemini` |

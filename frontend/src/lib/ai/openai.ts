@@ -1,4 +1,4 @@
-const prepKitJsonSchema = {
+export const prepKitJsonSchema = {
   type: "object",
   additionalProperties: false,
   required: ["candidateProfile", "sections"],
